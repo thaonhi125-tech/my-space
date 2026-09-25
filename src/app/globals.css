@@ -313,8 +313,18 @@ a {
 
 .rail-nav {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   margin-top: 24px;
+}
+
+/* Collapsed rail: every item is the same 44px rounded square, so the active
+   highlight is a tidy tile rather than a squeezed capsule around the icon. */
+.rail:not(.expanded) .rail-nav .nav-link,
+.rail:not(.expanded) .rail-footer .icon-button {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  justify-self: center;
 }
 
 .nav-link, .icon-button, .button {
@@ -349,10 +359,8 @@ a {
 
 .nav-link.active {
   background: var(--mint-soft);
-  border-color: var(--mint-border);
   color: var(--mint);
   font-weight: 600;
-  box-shadow: 0 0 24px var(--mint-soft);
 }
 
 .rail-footer {
@@ -641,7 +649,9 @@ a {
   z-index: 60;
   top: calc(100% + 6px);
   right: 0;
+  width: max-content;
   min-width: 230px;
+  max-width: min(340px, calc(100vw - 24px));
   padding: 6px;
   background: var(--surface);
   border: 1px solid var(--border-strong);
@@ -674,6 +684,8 @@ a {
 
 .menu-item small {
   margin-left: auto;
+  padding-left: 12px;
+  white-space: nowrap;
   color: var(--muted);
   font: 11px 'JetBrains Mono', ui-monospace, monospace;
 }

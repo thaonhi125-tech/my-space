@@ -13,11 +13,8 @@ import TableRow from '@tiptap/extension-table-row'
 import TableHeader from '@tiptap/extension-table-header'
 import TableCell from '@tiptap/extension-table-cell'
 import {
-  AlignCenter, AlignLeft, AlignRight, Bold, Check, PanelLeftClose, PanelLeftOpen,
-  Code, Copy, Download, Focus, Heading1, Heading2, Heading3,
-  Italic, Link2, List, ListOrdered, Minimize2, Plus, Printer,
-  Quote, Redo2, Rows, Search, Strikethrough, Table2, Trash2,
-  Underline as UnderlineIcon, Undo2, Unlink, Upload, X, Columns2, Image as ImageIcon
+  Bold, Code, Columns2, Copy, Download, Focus, Heading1, Heading2, Italic, Link2, Minimize2, PanelLeftClose,
+  PanelLeftOpen, Plus, Printer, Rows, Search, Strikethrough, Trash2, Underline as UnderlineIcon, Unlink, Upload, X,
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { db, exportBackup, importBackup, isQuotaError, parseBackup } from '@/lib/db'
@@ -28,6 +25,7 @@ import type { EditorView } from '@tiptap/pm/view'
 import { ImageNode } from './image-node'
 import { SlashMenu } from './slash-menu'
 import { Dictation } from './dictation'
+import { KeyboardBar } from './keyboard-bar'
 import { NodeSelection } from '@tiptap/pm/state'
 import { Modal } from '../modal'
 import { SaveIndicator } from '../save-indicator'
@@ -716,7 +714,7 @@ export default function WritingWorkspace() {
         )}
 
         {/* Formatting Toolbar */}
-        <Toolbar editor={editor} onOpenLink={openLinkDialog} onPickImage={() => imageFileRef.current?.click()} />
+        {editor && <KeyboardBar editor={editor} onOpenLink={openLinkDialog} onPickImage={() => imageFileRef.current?.click()} />}
         <input
           ref={imageFileRef}
           className="sr-only"
@@ -880,8 +878,6 @@ export default function WritingWorkspace() {
   )
 }
 
-type Editor = ReturnType<typeof useEditor>
-
 function Tool({
   label,
   shortcut,
@@ -906,84 +902,5 @@ function Tool({
     >
       {icon}
     </button>
-  )
-}
-
-function Toolbar({ editor, onOpenLink, onPickImage }: { editor: Editor; onOpenLink: () => void; onPickImage: () => void }) {
-  if (!editor) return <div className="editor-toolbar" />
-
-  const isTableActive = editor.isActive('table')
-
-  return (
-    <div className="editor-toolbar" role="toolbar" aria-label="Formatting tools">
-      <Tool label="Undo" shortcut="Z" click={() => editor.chain().focus().undo().run()} icon={<Undo2 />} />
-      <Tool label="Redo" shortcut="Shift+Z" click={() => editor.chain().focus().redo().run()} icon={<Redo2 />} />
-
-      <span className="separator" />
-
-      <Tool
-        label="Heading 1"
-        active={editor.isActive('heading', { level: 1 })}
-        click={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-        icon={<Heading1 />}
-      />
-      <Tool
-        label="Heading 2"
-        active={editor.isActive('heading', { level: 2 })}
-        click={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-        icon={<Heading2 />}
-      />
-      <Tool
-        label="Heading 3"
-        active={editor.isActive('heading', { level: 3 })}
-        click={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-        icon={<Heading3 />}
-      />
-
-      <span className="separator" />
-
-      <Tool label="Bold" shortcut="B" active={editor.isActive('bold')} click={() => editor.chain().focus().toggleBold().run()} icon={<Bold />} />
-      <Tool label="Italic" shortcut="I" active={editor.isActive('italic')} click={() => editor.chain().focus().toggleItalic().run()} icon={<Italic />} />
-      <Tool label="Underline" shortcut="U" active={editor.isActive('underline')} click={() => editor.chain().focus().toggleUnderline().run()} icon={<UnderlineIcon />} />
-      <Tool label="Strikethrough" active={editor.isActive('strike')} click={() => editor.chain().focus().toggleStrike().run()} icon={<Strikethrough />} />
-      <Tool label="Inline code" active={editor.isActive('code')} click={() => editor.chain().focus().toggleCode().run()} icon={<Code />} />
-      <Tool label="Link" shortcut="K" active={editor.isActive('link')} click={onOpenLink} icon={<Link2 />} />
-
-      <span className="separator" />
-
-      <Tool label="Bullet list" active={editor.isActive('bulletList')} click={() => editor.chain().focus().toggleBulletList().run()} icon={<List />} />
-      <Tool label="Numbered list" active={editor.isActive('orderedList')} click={() => editor.chain().focus().toggleOrderedList().run()} icon={<ListOrdered />} />
-      <Tool label="Task checklist" active={editor.isActive('taskList')} click={() => editor.chain().focus().toggleTaskList().run()} icon={<Check />} />
-      <Tool label="Blockquote" active={editor.isActive('blockquote')} click={() => editor.chain().focus().toggleBlockquote().run()} icon={<Quote />} />
-
-      <span className="separator" />
-
-      <Tool label="Image" click={onPickImage} icon={<ImageIcon />} />
-      <Tool
-        label="Insert table (3x3)"
-        active={isTableActive}
-        click={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
-        icon={<Table2 />}
-      />
-
-      {isTableActive && (
-        <div className="table-tools" title="Table management">
-          <Tool label="Add row after" click={() => editor.chain().focus().addRowAfter().run()} icon={<Rows />} />
-          <Tool label="Delete current row" click={() => editor.chain().focus().deleteRow().run()} icon={<Trash2 />} />
-          <Tool label="Add column after" click={() => editor.chain().focus().addColumnAfter().run()} icon={<Plus />} />
-          <Tool label="Delete table" click={() => editor.chain().focus().deleteTable().run()} icon={<X />} />
-        </div>
-      )}
-
-      <span className="separator" />
-
-      <Tool label="Align left" active={editor.isActive({ textAlign: 'left' })} click={() => editor.chain().focus().setTextAlign('left').run()} icon={<AlignLeft />} />
-      <Tool label="Align center" active={editor.isActive({ textAlign: 'center' })} click={() => editor.chain().focus().setTextAlign('center').run()} icon={<AlignCenter />} />
-      <Tool label="Align right" active={editor.isActive({ textAlign: 'right' })} click={() => editor.chain().focus().setTextAlign('right').run()} icon={<AlignRight />} />
-
-      <span className="separator" />
-
-      <Tool label="Clear formatting" click={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} icon={<X />} />
-    </div>
   )
 }

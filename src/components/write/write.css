@@ -249,16 +249,6 @@
 }
 
 
-.editor-toolbar {
-  min-height: 48px;
-  padding: 6px 12px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 3px;
-  border-bottom: 1px solid var(--border);
-  scrollbar-width: thin;
-}
 
 .tool {
   flex: 0 0 auto;
@@ -483,7 +473,7 @@
 
 /* Touch screens have their own selection menu; the toolbar covers the same tools. */
 @media (pointer: coarse) {
-  .bubble {
+  .bubble:not(.table-bubble) {
     display: none !important;
   }
 }
@@ -577,8 +567,7 @@
 }
 
 .writing.focus .documents,
-.writing.focus .write-header,
-.writing.focus .editor-toolbar {
+.writing.focus .write-header {
   display: none !important;
 }
 
@@ -619,11 +608,6 @@
   }
   .editor-scroll {
     padding: 24px 16px 90px;
-  }
-  /* On phones the toolbar stays one swipeable row instead of eating the screen. */
-  .editor-toolbar {
-    flex-wrap: nowrap;
-    overflow-x: auto;
   }
   .write-header {
     padding: 0 6px;
@@ -676,11 +660,6 @@
 
 /* Desktop (mouse): Notion-style — no fixed toolbar; select text for the
    formatting bar, type "/" for blocks. Touch screens keep the toolbar. */
-@media (hover: hover) and (pointer: fine) {
-  .editor-toolbar {
-    display: none;
-  }
-}
 
 .bubble .separator {
   height: 18px;
@@ -830,5 +809,80 @@
   .dictation-bar {
     top: calc(10px + env(safe-area-inset-top));
     bottom: auto;
+  }
+}
+
+/* Phones: formatting rides on top of the keyboard (Notion mobile style). */
+.keyboard-bar {
+  position: fixed;
+  z-index: 960;
+  left: 0;
+  right: 0;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border-top: 1px solid var(--border-strong);
+  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.12);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.kb-scroll {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.kb-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.kb-tool {
+  width: 42px;
+  height: 40px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--secondary);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.kb-tool.active {
+  background: var(--mint-soft);
+  color: var(--mint);
+}
+
+.kb-slash {
+  font: 600 18px 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.keyboard-bar > .kb-tool {
+  border-left: 1px solid var(--border);
+  border-radius: 0;
+  width: 48px;
+  height: 100%;
+}
+
+.kb-sep {
+  width: 1px;
+  height: 22px;
+  flex: none;
+  margin: 0 4px;
+  background: var(--border);
+}
+
+/* While typing on a phone the bottom nav would sit between text and keyboard bar. */
+@media (pointer: coarse) {
+  body:has(.keyboard-bar) .mobile-nav {
+    display: none;
   }
 }

@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
 import { AlignButtons, ColorPanel, MoreButtons, SizeButtons } from './format-controls'
+import { InlineFontChips } from './font-controls'
 
 /*
  * Phones: formatting sits right on top of the on-screen keyboard (like Notion
@@ -62,6 +63,9 @@ export function KeyboardBar({ editor, onOpenLink, onPickImage }: { editor: Edito
   const extra = more && (
     <div className="kb-extra" onPointerDown={e => e.preventDefault()} onMouseDown={e => e.preventDefault()}>
       <ColorPanel editor={editor} />
+      <div className="kb-extra-row kb-fonts">
+        <InlineFontChips editor={editor} />
+      </div>
       <div className="kb-extra-row">
         <SizeButtons editor={editor} />
       </div>

@@ -18,6 +18,9 @@ import Highlight from '@tiptap/extension-highlight'
 import Subscript from '@tiptap/extension-subscript'
 import Superscript from '@tiptap/extension-superscript'
 import { FontSize } from './font-size'
+import FontFamily from '@tiptap/extension-font-family'
+import { fontFamily } from './fonts'
+import { InlineFontChips, PageFontButton } from './font-controls'
 import { AlignButtons, BubbleDropdown, ColorPanel, currentBlockLabel, MoreButtons, SizeButtons, TurnInto } from './format-controls'
 import {
   Bold, Code, Columns2, Copy, Download, Focus, Italic, Link2, Minimize2, PanelLeftClose,
@@ -83,6 +86,7 @@ const extensions = [
   Color,
   Highlight.configure({ multicolor: true }),
   FontSize,
+  FontFamily,
   Subscript,
   Superscript,
 ]
@@ -130,7 +134,7 @@ export default function WritingWorkspace() {
   }, [notice])
   const active = docs.find(d => d.id === activeId)
 
-  const autosave = useAutosave<Partial<Pick<LocalDocument, 'title' | 'content'>>>({
+  const autosave = useAutosave<Partial<Pick<LocalDocument, 'title' | 'content' | 'font'>>>({
     delay: 650,
     write: async (id, patch) => {
       const title = patch.title === undefined ? {} : { title: patch.title.trim() || t('Untitled document') }
@@ -457,7 +461,8 @@ export default function WritingWorkspace() {
     if (!active || !editor || !format) return
     const safe = titleOf(active.title).replace(/[^\p{L}\p{N}\-_ ]/gu, '').trim() || 'document'
     if (format === 'html') {
-      download(`${safe}.html`, `<!doctype html><meta charset="utf-8"><title>${safe}</title><article>${editor.getHTML()}</article>`, 'text/html')
+      const font = fontFamily(active.font)
+      download(`${safe}.html`, `<!doctype html><meta charset="utf-8"><title>${safe}</title><article${font ? ` style="font-family: ${font.replace(/"/g, "'")}"` : ''}>${editor.getHTML()}</article>`, 'text/html')
     }
     if (format === 'txt') {
       download(`${safe}.txt`, editor.getText(), 'text/plain')
@@ -606,6 +611,16 @@ export default function WritingWorkspace() {
               ]}
             />
 
+            {active && (
+              <PageFontButton
+                font={active.font ?? 'default'}
+                onChange={font => {
+                  setDocs(v => v.map(d => (d.id === active.id ? { ...d, font } : d)))
+                  autosave.queue(active.id, { font })
+                }}
+              />
+            )}
+
             <CaptureScreenButton
               onImage={file => editor && void insertImages(editor.view, [file])}
               onError={text => setNotice({ text, error: true })}
@@ -642,7 +657,10 @@ export default function WritingWorkspace() {
         {/* Scrollable Editor Container */}
         <div className="editor-scroll">
           {active ? (
-            <article className="page">
+            <article
+              className={`page ${fontFamily(active.font) ? 'has-font' : ''}`}
+              style={{ '--doc-font': fontFamily(active.font) ?? undefined } as React.CSSProperties}
+            >
               <input
                 ref={titleRef}
                 className="title-input"
@@ -694,9 +712,11 @@ export default function WritingWorkspace() {
                     >
                       {() => <ColorPanel editor={editor} />}
                     </BubbleDropdown>
-                    <BubbleDropdown label={<span className="bubble-dd-text">Aa</span>} title={t('Text size and alignment')}>
+                    <BubbleDropdown label={<span className="bubble-dd-text">Aa</span>} title={t('Font, size and alignment')}>
                       {() => (
                         <div className="fmt-panel">
+                          <div className="fmt-label">{t('Font')}</div>
+                          <InlineFontChips editor={editor} />
                           <div className="fmt-label">{t('Size')}</div>
                           <SizeButtons editor={editor} />
                           <div className="fmt-label">{t('Alignment')}</div>

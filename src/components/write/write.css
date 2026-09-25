@@ -307,6 +307,13 @@
   margin: 0 auto;
 }
 
+/* Page font (per document): title and body follow it; default keeps the app's fonts. */
+.page.has-font .title-input,
+.page.has-font .prose-editor,
+.page.has-font .prose-editor :is(h1, h2, h3) {
+  font-family: var(--doc-font);
+}
+
 .title-input {
   width: 100%;
   border: 0;
@@ -1058,4 +1065,93 @@
 .kb-extra .fmt-icon {
   height: 38px;
   min-width: 38px;
+}
+
+/* Font picker */
+.font-popover {
+  width: 320px;
+  padding: 10px;
+}
+
+.font-popover-title {
+  padding: 2px 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.font-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.font-card {
+  position: relative;
+  padding: 10px 10px 8px;
+  display: grid;
+  justify-items: start;
+  gap: 1px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.font-card:hover {
+  background: var(--surface-hi);
+}
+
+.font-card[aria-pressed='true'] {
+  border-color: var(--mint);
+  background: var(--mint-soft);
+}
+
+.font-ag {
+  font-size: 26px;
+  line-height: 1.2;
+}
+
+.font-name {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.font-card small {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.font-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: var(--mint);
+}
+
+.fmt-fonts {
+  flex-wrap: wrap;
+  max-width: 330px;
+}
+
+.kb-fonts .fmt-fonts {
+  flex-wrap: nowrap;
+  max-width: none;
+}
+
+.kb-fonts {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+}
+
+.kb-fonts .fmt-chip {
+  white-space: nowrap;
+}
+
+/* Dropdowns on the right of the selection bar open leftwards, so they stay on screen. */
+.bubble > .bubble-dd:not(:first-child) .bubble-dd-panel {
+  left: auto;
+  right: 0;
 }

@@ -399,24 +399,12 @@ a {
   font-size: 12px;
 }
 
-.save-state[data-state=saved] {
-  color: var(--success);
-}
 
-.save-state[data-state=saving] {
-  color: var(--mint);
-}
 
 .save-state[data-state=error] {
   color: var(--danger);
 }
 
-.dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
-}
 
 .toast {
   position: fixed;

@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { InstallApp } from './install-app'
 import { useTheme } from './theme-context'
 
 const WorkWorkspace = dynamic(() => import('./work/work-workspace'))
@@ -85,6 +86,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <nav className="rail-nav">{navLinks}</nav>
 
         <div className="rail-footer">
+          <InstallApp className="icon-button" />
+
           <button className="icon-button" onClick={toggleTheme} title={`Switch to ${themeLabel}`} aria-label={`Switch to ${themeLabel}`}>
             {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
             <span className="footer-label">{themeLabel}</span>
@@ -109,6 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
           <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
         </button>
+        <InstallApp className="icon-button mobile-theme-btn" compactLabel />
       </nav>
 
       <main className="workspace">

@@ -650,6 +650,9 @@ a {
     background: rgba(0, 0, 0, 0.4);
     cursor: default;
   }
+  .mobile-nav .nav-label {
+    font-size: 11px;
+  }
   .mobile-nav .nav-link svg,
   .mobile-nav .mobile-theme-btn svg {
     width: 20px;
@@ -682,4 +685,14 @@ a {
   .ProseMirror {
     max-width: none !important;
   }
+}
+
+/* Install-app instructions */
+.install-steps {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 10px;
+  line-height: 1.5;
+  color: var(--text);
 }

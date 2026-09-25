@@ -595,6 +595,8 @@
   .write-header .menu-trigger {
     width: 40px;
     padding: 0;
+    background: transparent;
+    border-color: transparent;
   }
   .write-header .save-state {
     white-space: nowrap;

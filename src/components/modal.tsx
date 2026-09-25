@@ -2,6 +2,7 @@
 
 import { X } from 'lucide-react'
 import { useEffect, useId, useRef } from 'react'
+import { createPortal } from 'react-dom'
 
 const FOCUSABLE = 'input, button, select, textarea, a[href], [tabindex]:not([tabindex="-1"])'
 
@@ -43,7 +44,9 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
     }
   }
 
-  return (
+  // Portalled to <body>: parents with backdrop-filter (the bottom bar, the
+  // workspace) would otherwise trap the fixed overlay inside themselves.
+  return createPortal(
     <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div ref={dialog} className="modal-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} onKeyDown={onKeyDown}>
         <div className="modal-header">
@@ -54,6 +57,7 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

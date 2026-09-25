@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Editor } from 'tldraw'
 import { db, isQuotaError } from '@/lib/db'
+import { useAutosave } from '@/lib/use-autosave'
 import { newBoard, type LocalBoard, type SaveState } from '@/lib/models'
 import { useTheme } from '../theme-context'
 import './create.css'
@@ -33,7 +34,7 @@ export default function CreativeWorkspace() {
   const [loading, setLoading] = useState(true)
   const [panel, setPanel] = useState(true)
   const [save, setSave] = useState<SaveState>('idle')
-  const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null)
+  const [notice, setNotice] = useState<{ text: string; error?: boolean; offerExport?: boolean } | null>(null)
 
   // Modals state
   const [boardToDelete, setBoardToDelete] = useState<LocalBoard | null>(null)
@@ -43,9 +44,45 @@ export default function CreativeWorkspace() {
   const { theme } = useTheme()
   const editorRef = useRef<Editor | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Boards whose saved snapshot could not be loaded. Autosave is disabled for
+  // them so an empty canvas can never overwrite the original drawing.
+  const [unreadable, setUnreadable] = useState<string[]>([])
+  const unreadableRef = useRef(unreadable)
+  unreadableRef.current = unreadable
 
   const active = boards.find(b => b.id === activeId)
+  const activeUnreadable = !!active && unreadable.includes(active.id)
+
+  const autosave = useAutosave<Partial<Pick<LocalBoard, 'title' | 'snapshot'>>>({
+    delay: 900,
+    write: async (id, patch) => {
+      const title = patch.title === undefined ? {} : { title: patch.title.trim() || 'Untitled board' }
+      await db.boards.update(id, { ...patch, ...title, updatedAt: new Date().toISOString() })
+    },
+    onSaving: () => setSave('saving'),
+    onSaved: (id, patch) => {
+      const updatedAt = new Date().toISOString()
+      const snapshot = 'snapshot' in patch ? { snapshot: patch.snapshot } : {}
+      setBoards(v => v.map(b => (b.id === id ? { ...b, ...snapshot, updatedAt } : b)))
+      setSave('saved')
+    },
+    onError: err => {
+      setSave('error')
+      setNotice({
+        text: isQuotaError(err)
+          ? 'Browser storage is full. Export this board now; the canvas remains open.'
+          : 'The board could not be saved. Export it before leaving.',
+        error: true,
+        offerExport: true,
+      })
+    },
+  })
+
+  const selectBoard = (id: string) => {
+    if (id === activeId) return
+    void autosave.flush()
+    setActiveId(id)
+  }
 
   const refresh = useCallback(async (id?: string) => {
     const all = await db.boards.orderBy('updatedAt').reverse().toArray()
@@ -82,6 +119,7 @@ export default function CreativeWorkspace() {
   }, [activeId])
 
   const create = async () => {
+    await autosave.flush()
     const b = newBoard()
     await db.boards.add(b)
     await refresh(b.id)
@@ -104,22 +142,11 @@ export default function CreativeWorkspace() {
   const updateHeaderTitle = (title: string) => {
     if (!active) return
     setBoards(v => v.map(b => (b.id === active.id ? { ...b, title } : b)))
-    setSave('saving')
-    if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(async () => {
-      try {
-        await db.boards.update(active.id, {
-          title: title || 'Untitled board',
-          updatedAt: new Date().toISOString(),
-        })
-        setSave('saved')
-      } catch {
-        setSave('error')
-      }
-    }, 500)
+    autosave.queue(active.id, { title })
   }
 
   const duplicate = async (b: LocalBoard) => {
+    await autosave.flush()
     const copy = {
       ...b,
       id: crypto.randomUUID(),
@@ -148,41 +175,50 @@ export default function CreativeWorkspace() {
     setNotice({ text: `Deleted "${target.title}"` })
   }
 
-  const changed = (snapshot: unknown) => {
-    if (!activeId) return
-    setSave('saving')
-    if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(async () => {
-      try {
-        const updatedAt = new Date().toISOString()
-        await db.boards.update(activeId, { snapshot, updatedAt })
-        setBoards(v => v.map(b => (b.id === activeId ? { ...b, snapshot, updatedAt } : b)))
-        setSave('saved')
-      } catch (err) {
-        setSave('error')
-        setNotice({
-          text: isQuotaError(err)
-            ? 'Browser storage is full. Export this board now; the canvas remains open.'
-            : 'The board could not be saved. Export it before leaving.',
-          error: true,
-        })
-      }
-    }, 900)
+  const boardLoadFailed = (id: string) => {
+    setUnreadable(v => (v.includes(id) ? v : [...v, id]))
+    setNotice({
+      text: 'This board could not be opened, so changes to it are not saved. Export it to keep the original.',
+      error: true,
+      offerExport: true,
+    })
   }
 
   const importBoard = async (file?: File) => {
     if (!file) return
     try {
-      const data = JSON.parse(await file.text()) as { format?: string; snapshot?: unknown; title?: string }
-      const snapshot = data.format === 'my-space-board' ? data.snapshot : data
-      if (!snapshot || typeof snapshot !== 'object') throw new Error()
-      const b = newBoard(data.title || file.name.replace(/\.[^.]+$/, ''))
+      const raw = await file.text()
+      const data = JSON.parse(raw) as { format?: string; snapshot?: unknown; title?: string; tldrawFileFormatVersion?: number }
+      const tldraw = await import('tldraw')
+      let snapshot: unknown
+      if (data.tldrawFileFormatVersion) {
+        // A native .tldr file, e.g. saved from tldraw.com.
+        const parsed = tldraw.parseTldrawJsonFile({ json: raw, schema: tldraw.createTLSchema() })
+        if (!parsed.ok) throw new Error('unreadable .tldr')
+        snapshot = tldraw.getSnapshot(parsed.value)
+      } else if (data.format === 'my-space-board' && data.snapshot === null) {
+        snapshot = null // an exported board that was never drawn on
+      } else {
+        snapshot = data.format === 'my-space-board' ? data.snapshot : data
+        const shape = snapshot as { store?: unknown; schema?: unknown; document?: { store?: unknown; schema?: unknown } }
+        const records = shape?.document ?? shape
+        if (!records || typeof records.store !== 'object' || typeof records.schema !== 'object') throw new Error('not a snapshot')
+        // Throws when the records are not a loadable tldraw snapshot, so a
+        // broken file is rejected instead of being imported as an empty board.
+        tldraw.createTLStore({
+          shapeUtils: tldraw.defaultShapeUtils,
+          bindingUtils: tldraw.defaultBindingUtils,
+          snapshot: snapshot as Parameters<typeof tldraw.loadSnapshot>[1],
+        })
+      }
+      await autosave.flush()
+      const b = newBoard(data.title || file.name.replace(/(\.tldr)?(\.json)?$/i, '') || 'Imported board')
       b.snapshot = snapshot
       await db.boards.add(b)
       await refresh(b.id)
       setNotice({ text: `Board "${b.title}" imported.` })
     } catch {
-      setNotice({ text: 'This is not a valid board snapshot.', error: true })
+      setNotice({ text: 'This file is not a board that My Space or tldraw can open. Nothing was imported.', error: true })
     } finally {
       if (fileRef.current) fileRef.current.value = ''
     }
@@ -219,7 +255,7 @@ export default function CreativeWorkspace() {
                 <button
                   type="button"
                   className="board-select-btn"
-                  onClick={() => setActiveId(b.id)}
+                  onClick={() => selectBoard(b.id)}
                   aria-current={isActive ? 'true' : undefined}
                 >
                   <span className="board-preview">
@@ -328,9 +364,9 @@ export default function CreativeWorkspace() {
             )}
           </div>
 
-          <div className="save-state" data-state={save}>
+          <div className="save-state" data-state={activeUnreadable ? 'error' : save}>
             <span className="dot" />
-            {save === 'saving' ? 'Saving…' : save === 'error' ? 'Save failed' : 'Saved locally'}
+            {activeUnreadable ? 'Not saving' : save === 'saving' ? 'Saving…' : save === 'error' ? 'Save failed' : 'Saved locally'}
           </div>
 
           <div className="canvas-header-actions">
@@ -361,7 +397,10 @@ export default function CreativeWorkspace() {
               snapshot={active.snapshot}
               theme={theme}
               onEditor={e => (editorRef.current = e)}
-              onChange={changed}
+              onChange={snapshot => {
+                if (!unreadableRef.current.includes(active.id)) autosave.queue(active.id, { snapshot })
+              }}
+              onLoadError={() => boardLoadFailed(active.id)}
             />
           )}
         </div>
@@ -431,7 +470,7 @@ export default function CreativeWorkspace() {
           <button className="icon-button" onClick={() => setNotice(null)} aria-label="Dismiss notification">
             <X size={16} />
           </button>
-          {notice.error && active && (
+          {notice.offerExport && active && (
             <button className="button" onClick={() => download(`${active.title}.json`, active.snapshot)}>
               <Save size={14} /> Export now
             </button>

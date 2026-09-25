@@ -22,6 +22,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { db, exportBackup, importBackup, isQuotaError, parseBackup } from '@/lib/db'
 import { useAutosave } from '@/lib/use-autosave'
+import { Modal } from '../modal'
 import { EMPTY_CONTENT, newDocument, type LocalDocument, type SaveState } from '@/lib/models'
 import './write.css'
 
@@ -237,10 +238,6 @@ export default function WritingWorkspace() {
           setFocus(false)
         } else if (findOpen) {
           setFindOpen(false)
-        } else if (linkOpen) {
-          setLinkOpen(false)
-        } else if (docToDelete) {
-          setDocToDelete(null)
         }
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
         e.preventDefault()
@@ -252,7 +249,7 @@ export default function WritingWorkspace() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [focus, findOpen, linkOpen, docToDelete, openLinkDialog])
+  }, [focus, findOpen, openLinkDialog])
 
   const create = async () => {
     await autosave.flush()
@@ -419,10 +416,19 @@ export default function WritingWorkspace() {
     if (!editor) return
     const trimmed = linkUrl.trim()
     if (!trimmed) {
-      editor.chain().focus().unsetLink().run()
+      editor.chain().focus().extendMarkRange('link').unsetLink().run()
     } else {
-      const url = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
-      editor.chain().focus().setLink({ href: url }).run()
+      const url = /^(https?:|mailto:)/i.test(trimmed) ? trimmed : `https://${trimmed}`
+      if (editor.state.selection.empty && !editor.isActive('link')) {
+        // Nothing selected: insert the address itself as a link instead of silently doing nothing.
+        editor
+          .chain()
+          .focus()
+          .insertContent([{ type: 'text', text: trimmed, marks: [{ type: 'link', attrs: { href: url } }] }, { type: 'text', text: ' ' }])
+          .run()
+      } else {
+        editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+      }
     }
     setLinkOpen(false)
   }
@@ -713,20 +719,14 @@ export default function WritingWorkspace() {
 
       {/* Link Dialog Modal */}
       {linkOpen && (
-        <div className="modal-overlay" onClick={() => setLinkOpen(false)}>
-          <div className="modal-dialog" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Insert Link</h3>
-              <button className="icon-button" onClick={() => setLinkOpen(false)} aria-label="Close">
-                <X size={18} />
-              </button>
-            </div>
+        <Modal title={editor?.isActive('link') ? 'Edit link' : 'Insert link'} onClose={() => setLinkOpen(false)}>
             <input
               className="input"
               value={linkUrl}
               onChange={e => setLinkUrl(e.target.value)}
               placeholder="https://example.com"
-              autoFocus
+              aria-label="Link address"
+              data-autofocus
               onKeyDown={e => {
                 if (e.key === 'Enter') applyLink()
               }}
@@ -741,36 +741,28 @@ export default function WritingWorkspace() {
                 Cancel
               </button>
               <button type="button" className="button primary" onClick={applyLink}>
-                Save Link
+                Save link
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* Delete Document Confirmation Modal */}
       {docToDelete && (
-        <div className="modal-overlay" onClick={() => setDocToDelete(null)}>
-          <div className="modal-dialog" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Delete Document</h3>
-              <button className="icon-button" onClick={() => setDocToDelete(null)} aria-label="Close">
-                <X size={18} />
-              </button>
-            </div>
+        <Modal title="Delete document" onClose={() => setDocToDelete(null)}>
             <p className="muted" style={{ margin: 0, lineHeight: 1.5 }}>
               Are you sure you want to delete <strong>“{docToDelete.title || 'Untitled document'}”</strong>? This action cannot be undone.
             </p>
             <div className="modal-footer">
-              <button type="button" className="button" onClick={() => setDocToDelete(null)}>
+              {/* Cancel takes focus: Enter must never delete by accident. */}
+              <button type="button" className="button" onClick={() => setDocToDelete(null)} data-autofocus>
                 Cancel
               </button>
               <button type="button" className="button danger" onClick={() => void confirmDelete()}>
                 Delete
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* Notification Toast */}

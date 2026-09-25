@@ -3,7 +3,7 @@ import { createAutosaver } from './use-autosave'
 
 type Patch = { title?: string; content?: string }
 
-const setup = (write = vi.fn(async (_id: string, _patch: Patch) => {})) => {
+const setup = (write = vi.fn<(id: string, patch: Patch) => Promise<void>>(async () => {})) => {
   const onSaved = vi.fn()
   const onError = vi.fn()
   const saver = createAutosaver<Patch>(500, () => ({ write, onSaving: () => {}, onSaved, onError }))
@@ -41,7 +41,7 @@ describe('autosave', () => {
   })
 
   it('keeps a failed edit and retries it with the next one', async () => {
-    const write = vi.fn(async (_id: string, _patch: Patch) => {})
+    const write = vi.fn<(id: string, patch: Patch) => Promise<void>>(async () => {})
     write.mockRejectedValueOnce(new Error('disk full'))
     const { saver, onError } = setup(write)
     saver.queue('a', { title: 'T' })

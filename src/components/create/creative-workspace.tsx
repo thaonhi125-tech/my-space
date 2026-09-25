@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Editor } from 'tldraw'
 import { db, isQuotaError } from '@/lib/db'
 import { useAutosave } from '@/lib/use-autosave'
+import { Modal } from '../modal'
 import { newBoard, type LocalBoard, type SaveState } from '@/lib/models'
 import { useTheme } from '../theme-context'
 import './create.css'
@@ -420,59 +421,45 @@ export default function CreativeWorkspace() {
 
       {/* Rename Board Modal */}
       {boardToRename && (
-        <div className="modal-overlay" onClick={() => setBoardToRename(null)}>
-          <div className="modal-dialog" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Rename Board</h3>
-              <button className="icon-button" onClick={() => setBoardToRename(null)} aria-label="Close">
-                <X size={18} />
-              </button>
-            </div>
-            <input
-              className="input"
-              value={renameInput}
-              onChange={e => setRenameInput(e.target.value)}
-              placeholder="Board name"
-              autoFocus
-              onKeyDown={e => {
-                if (e.key === 'Enter') void confirmRename()
-              }}
-            />
-            <div className="modal-footer">
-              <button type="button" className="button" onClick={() => setBoardToRename(null)}>
-                Cancel
-              </button>
-              <button type="button" className="button primary" onClick={() => void confirmRename()}>
-                Save Name
-              </button>
-            </div>
+        <Modal title="Rename board" onClose={() => setBoardToRename(null)}>
+          <input
+            className="input"
+            value={renameInput}
+            onChange={e => setRenameInput(e.target.value)}
+            placeholder="Board name"
+            aria-label="Board name"
+            data-autofocus
+            onKeyDown={e => {
+              if (e.key === 'Enter') void confirmRename()
+            }}
+          />
+          <div className="modal-footer">
+            <button type="button" className="button" onClick={() => setBoardToRename(null)}>
+              Cancel
+            </button>
+            <button type="button" className="button primary" onClick={() => void confirmRename()}>
+              Save name
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Delete Board Confirmation Modal */}
       {boardToDelete && (
-        <div className="modal-overlay" onClick={() => setBoardToDelete(null)}>
-          <div className="modal-dialog" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Delete Board</h3>
-              <button className="icon-button" onClick={() => setBoardToDelete(null)} aria-label="Close">
-                <X size={18} />
-              </button>
-            </div>
-            <p className="muted" style={{ margin: 0, lineHeight: 1.5 }}>
-              Are you sure you want to delete <strong>“{boardToDelete.title}”</strong>? This action cannot be undone.
-            </p>
-            <div className="modal-footer">
-              <button type="button" className="button" onClick={() => setBoardToDelete(null)}>
-                Cancel
-              </button>
-              <button type="button" className="button danger" onClick={() => void confirmDelete()}>
-                Delete
-              </button>
-            </div>
+        <Modal title="Delete board" onClose={() => setBoardToDelete(null)}>
+          <p className="muted" style={{ margin: 0, lineHeight: 1.5 }}>
+            Are you sure you want to delete <strong>“{boardToDelete.title}”</strong>? This action cannot be undone.
+          </p>
+          <div className="modal-footer">
+            {/* Cancel takes focus: Enter must never delete by accident. */}
+            <button type="button" className="button" onClick={() => setBoardToDelete(null)} data-autofocus>
+              Cancel
+            </button>
+            <button type="button" className="button danger" onClick={() => void confirmDelete()}>
+              Delete
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Toast */}

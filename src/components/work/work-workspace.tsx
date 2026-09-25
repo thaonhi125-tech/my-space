@@ -28,13 +28,8 @@ export default function WorkWorkspace() {
           <span className="work-mark">
             <TimerReset size={19} />
           </span>
-          <div>
-            <span className="eyebrow">Work mode</span>
-            <strong>TanFlow</strong>
-          </div>
+          <strong>TanFlow</strong>
         </div>
-
-        <span className="muted work-note">Focus tools, unchanged</span>
 
         <div className="work-header-actions">
           <button
@@ -64,7 +59,6 @@ export default function WorkWorkspace() {
           <div className="frame-status">
             <div className="spinner" />
             <h2>Opening TanFlow</h2>
-            <p>The workspace is loaded only after you open Work mode.</p>
           </div>
         )}
 
@@ -90,7 +84,9 @@ export default function WorkWorkspace() {
           className={state === 'ready' ? 'ready' : ''}
           src={url}
           title="TanFlow work workspace"
-          allow="fullscreen"
+          // TanFlow's music is a YouTube player nested inside it; unless autoplay and
+          // encrypted-media are delegated here, its play buttons silently do nothing.
+          allow="autoplay; encrypted-media; fullscreen; picture-in-picture; clipboard-write; web-share"
           loading="eager"
           referrerPolicy="strict-origin-when-cross-origin"
           onLoad={() => setState('ready')}

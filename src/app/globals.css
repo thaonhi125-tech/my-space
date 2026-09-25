@@ -453,6 +453,27 @@ a {
   margin-bottom: 8px;
 }
 
+/* "+ New" in the document and board lists */
+.new-btn {
+  height: 32px;
+  padding: 0 12px 0 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--mint-border);
+  border-radius: 10px;
+  background: var(--mint-soft);
+  color: var(--mint);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.new-btn:hover {
+  filter: brightness(1.12);
+}
+
 /* Menu button (e.g. Export) */
 .menu-root {
   position: relative;
@@ -721,6 +742,10 @@ a {
   }
   .install-card > span {
     flex: 1;
+  }
+  /* While the card is shown, shrink the workspace so it covers nothing. */
+  .app-shell:has(.install-card) {
+    padding-bottom: calc(132px + env(safe-area-inset-bottom));
   }
   .install-card .button {
     min-height: 36px;

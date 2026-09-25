@@ -14,7 +14,7 @@ import TableHeader from '@tiptap/extension-table-header'
 import TableCell from '@tiptap/extension-table-cell'
 import {
   AlignCenter, AlignLeft, AlignRight, Bold, Check, PanelLeftClose, PanelLeftOpen,
-  Code, Copy, Download, FilePlus2, Focus, Heading1, Heading2, Heading3,
+  Code, Copy, Download, Focus, Heading1, Heading2, Heading3,
   Italic, Link2, List, ListOrdered, Minimize2, Plus, Printer,
   Quote, Redo2, Rows, Search, Strikethrough, Table2, Trash2,
   Underline as UnderlineIcon, Undo2, Unlink, Upload, X
@@ -27,6 +27,7 @@ import { Modal } from '../modal'
 import { SaveIndicator } from '../save-indicator'
 import { MenuButton } from '../menu-button'
 import { EMPTY_CONTENT, newDocument, type LocalDocument, type SaveState } from '@/lib/models'
+import { timeAgo } from '@/lib/time'
 import './write.css'
 
 const download = (name: string, text: string, type = 'application/json') => {
@@ -62,18 +63,6 @@ const mod = () => (/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+')
 
 // Below this width the document list is an overlay, not a column.
 const isNarrow = () => window.matchMedia('(max-width: 700px)').matches
-
-const timeAgo = (iso: string) => {
-  const diffMinutes = Math.max(1, Math.round((Date.now() - Date.parse(iso)) / 60000))
-  if (diffMinutes < 60) {
-    return new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(-diffMinutes, 'minute')
-  }
-  const diffHours = Math.round(diffMinutes / 60)
-  if (diffHours < 24) {
-    return new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(-diffHours, 'hour')
-  }
-  return new Date(iso).toLocaleDateString()
-}
 
 export default function WritingWorkspace() {
   const [docs, setDocs] = useState<LocalDocument[]>([])
@@ -462,7 +451,12 @@ export default function WritingWorkspace() {
     setLinkOpen(false)
   }
 
-  const filtered = docs.filter(d => d.title.toLowerCase().includes(query.toLowerCase()))
+  // First words of the body, so documents can be told apart without opening them.
+  const preview = (d: LocalDocument) => plainText(d.content).replace(/\s+/g, ' ').trim().slice(0, 90)
+  const needle = query.trim().toLowerCase()
+  const filtered = needle
+    ? docs.filter(d => d.title.toLowerCase().includes(needle) || plainText(d.content).toLowerCase().includes(needle))
+    : docs
   const words = plainText(active?.content).trim().split(/\s+/).filter(Boolean).length
   const chars = plainText(active?.content).length
 
@@ -509,8 +503,8 @@ export default function WritingWorkspace() {
       <aside className="documents" aria-label="Documents">
         <div className="docs-head">
           <h1>Documents</h1>
-          <button className="icon-button" onClick={create} aria-label="New document" title="Create new document">
-            <FilePlus2 size={20} />
+          <button type="button" className="new-btn" onClick={create} aria-label="New document">
+            <Plus size={15} /> New
           </button>
         </div>
 
@@ -519,12 +513,13 @@ export default function WritingWorkspace() {
           <input
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Search documents…"
+            placeholder="Search titles and text…"
             aria-label="Search documents"
           />
         </label>
 
         <div className="document-list">
+          {!filtered.length && needle && <p className="list-empty">Nothing matches “{query.trim()}”.</p>}
           {filtered.map(d => {
             const isActive = d.id === activeId
             return (
@@ -536,7 +531,10 @@ export default function WritingWorkspace() {
                   aria-current={isActive ? 'true' : undefined}
                 >
                   <span className="doc-title">{d.title || 'Untitled document'}</span>
-                  <span className="doc-time">{timeAgo(d.updatedAt)}</span>
+                  <span className="doc-meta">
+                    {timeAgo(d.updatedAt)}
+                    {preview(d) && <> · {preview(d)}</>}
+                  </span>
                 </button>
                 <div className="doc-actions">
                   <button

@@ -23,21 +23,21 @@
 }
 
 .docs-head {
-  padding: 20px 16px 12px 20px;
+  padding: 18px 14px 12px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
 .docs-head h1 {
-  font: 600 22px Outfit, sans-serif;
-  margin: 4px 0;
+  font: 600 18px Outfit, sans-serif;
+  margin: 0;
   color: var(--text);
 }
 
 .search {
-  margin: 0 14px 12px;
-  height: 40px;
+  margin: 0 12px 10px;
+  height: 38px;
   padding: 0 12px;
   display: flex;
   align-items: center;
@@ -67,21 +67,22 @@
 }
 
 .document-list {
-  padding: 4px 8px;
+  flex: 1;
+  min-height: 0;
+  padding: 2px 8px 8px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .document-row {
   position: relative;
   width: 100%;
-  border-radius: 12px;
-  border: 1px solid transparent;
+  border-radius: 10px;
   display: flex;
   align-items: center;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition: background-color 0.15s ease;
 }
 
 .document-row:hover {
@@ -89,8 +90,19 @@
 }
 
 .document-row.active {
-  background: var(--mint-soft);
-  border-color: var(--mint-border);
+  background: var(--surface-hi);
+}
+
+/* A slim accent bar marks the open item without tinting the whole row. */
+.document-row.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--mint);
 }
 
 .doc-select-btn {
@@ -99,11 +111,11 @@
   border: 0;
   background: transparent;
   text-align: left;
-  padding: 10px 10px 10px 12px;
+  padding: 10px 8px 10px 14px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .doc-title {
@@ -111,16 +123,21 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 13.5px;
   color: var(--text);
 }
 
-.document-row.active .doc-title {
-  color: var(--mint);
+.doc-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--muted);
 }
 
-.doc-time {
-  font-size: 11px;
+.list-empty {
+  margin: 12px 10px;
+  font-size: 13px;
   color: var(--muted);
 }
 
@@ -164,24 +181,36 @@
 
 .docs-footer {
   margin-top: auto;
-  padding: 12px;
+  padding: 8px 10px 12px;
   border-top: 1px solid var(--border);
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 4px;
 }
 
+/* Occasional actions: quiet text buttons, not two big slabs. */
 .docs-footer .button {
+  min-height: 36px;
   font-size: 12px;
+  font-weight: 500;
   padding: 0 10px;
+  background: transparent;
+  border-color: transparent;
+  color: var(--secondary);
+}
+
+.docs-footer .button:hover {
+  background: var(--surface-hi);
+  color: var(--text);
 }
 
 .docs-footer p {
   grid-column: 1 / -1;
-  margin: 6px 2px 2px;
+  margin: 2px 4px 0;
   font-size: 11px;
   line-height: 1.5;
   color: var(--muted);
+  text-align: center;
 }
 
 .writer {

@@ -1,6 +1,6 @@
 'use client'
 
-import { Copy, Download, FilePlus2, PanelLeftClose, PanelLeftOpen, Pencil, Save, Trash2, Upload, X } from 'lucide-react'
+import { Copy, Download, PanelLeftClose, Plus, PanelLeftOpen, Pencil, Save, Trash2, Upload, X } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Editor } from 'tldraw'
@@ -9,6 +9,7 @@ import { useAutosave } from '@/lib/use-autosave'
 import { Modal } from '../modal'
 import { SaveIndicator } from '../save-indicator'
 import { newBoard, type LocalBoard, type SaveState } from '@/lib/models'
+import { timeAgo } from '@/lib/time'
 import { useTheme } from '../theme-context'
 import './create.css'
 
@@ -259,8 +260,8 @@ export default function CreativeWorkspace() {
       <aside className={`board-panel ${panel ? '' : 'closed'}`} aria-label="Boards navigation">
         <div className="board-heading">
           <h1>Boards</h1>
-          <button className="icon-button" onClick={create} aria-label="New board" title="Create new board">
-            <FilePlus2 size={20} />
+          <button type="button" className="new-btn" onClick={create} aria-label="New board">
+            <Plus size={15} /> New
           </button>
         </div>
 
@@ -277,7 +278,7 @@ export default function CreativeWorkspace() {
                 >
                   <span className="board-copy">
                     <strong>{b.title}</strong>
-                    <small>{new Date(b.updatedAt).toLocaleDateString()}</small>
+                    <small>{timeAgo(b.updatedAt)}</small>
                   </span>
                 </button>
 

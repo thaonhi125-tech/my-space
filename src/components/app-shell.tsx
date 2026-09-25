@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { InstallApp, InstallCard } from './install-app'
+import { Mascot } from './mascot'
 import { useTheme } from './theme-context'
 
 const WorkWorkspace = dynamic(() => import('./work/work-workspace'))
@@ -78,10 +79,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className={`app-shell ${expanded ? 'rail-expanded' : ''}`}>
       <aside className={`rail ${expanded ? 'expanded' : ''}`} aria-label="Workspace navigation">
-        <Link href="/" className="brand" title="My Space">
-          <span className="brand-mark">T</span>
+        {/* Not a link: "/" is outside this layout, so it reloaded the shell (and TanFlow). */}
+        <div className="brand">
+          <span className="brand-mark">
+            <Mascot />
+          </span>
           <span className="brand-name">My Space</span>
-        </Link>
+        </div>
 
         <nav className="rail-nav">{navLinks}</nav>
 

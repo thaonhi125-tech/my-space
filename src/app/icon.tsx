@@ -22,14 +22,13 @@ export function renderMark(size: number) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          gap: size * 0.1,
           background: '#99e5b7',
-          color: '#0d1711',
-          fontSize: size * 0.5,
-          fontWeight: 800,
-          fontFamily: 'sans-serif',
         }}
       >
-        T
+        {/* The mascot's eyes, inside the maskable safe zone. */}
+        <div style={{ width: size * 0.11, height: size * 0.26, borderRadius: size, background: '#0d1711' }} />
+        <div style={{ width: size * 0.11, height: size * 0.26, borderRadius: size, background: '#0d1711' }} />
       </div>
     ),
     { width: size, height: size }

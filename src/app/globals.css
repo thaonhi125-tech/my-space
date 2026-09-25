@@ -150,19 +150,66 @@ a {
   color: var(--mint);
   font-family: Outfit, sans-serif;
   font-weight: 700;
-  cursor: pointer;
   text-decoration: none;
 }
 
 .brand-mark {
   min-width: 32px;
   height: 32px;
-  border-radius: 10px;
-  background: var(--mint);
-  color: var(--mint-contrast);
   display: grid;
   place-items: center;
-  font-weight: 800;
+}
+
+/* Mascot: mint body in the current theme, eyes in the mint contrast colour. */
+.mascot {
+  display: block;
+  overflow: visible;
+}
+
+.mascot-body {
+  fill: var(--mint);
+}
+
+.mascot-eye {
+  fill: var(--mint-contrast);
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.09s ease;
+}
+
+.mascot-smile {
+  fill: none;
+  stroke: var(--mint-contrast);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.mascot-eyes {
+  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.mascot-blink .mascot-eye {
+  transform: scaleY(0.12);
+}
+
+.mascot-curious .mascot-eye {
+  transform: scaleY(1.12);
+}
+
+.mascot-bounce {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.mascot-happy .mascot-bounce {
+  animation: mascot-hop 0.55s cubic-bezier(0.3, 0.7, 0.3, 1);
+}
+
+@keyframes mascot-hop {
+  0% { transform: none; }
+  25% { transform: scale(1.1, 0.88); }
+  55% { transform: translateY(-3px) scale(0.95, 1.06); }
+  100% { transform: none; }
 }
 
 .brand-name, .nav-label {

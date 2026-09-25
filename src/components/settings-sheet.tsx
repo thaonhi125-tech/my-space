@@ -1,6 +1,8 @@
 'use client'
 
-import { MonitorDown } from 'lucide-react'
+import { ExternalLink, MonitorDown } from 'lucide-react'
+
+export const REPO_URL = 'https://github.com/vanductan-NLT/my-space'
 import { useInstallFlow } from './install-app'
 import { Modal } from './modal'
 import { useTheme, type ThemeChoice } from './theme-context'
@@ -69,6 +71,14 @@ export function SettingsSheet({
                 <MonitorDown size={18} aria-hidden="true" />
               </button>
             )}
+
+            <a className="settings-row" href={REPO_URL} target="_blank" rel="noopener noreferrer">
+              <span>
+                <strong>Open source</strong>
+                <small>Clone or contribute on GitHub</small>
+              </span>
+              <ExternalLink size={18} aria-hidden="true" />
+            </a>
           </section>
         </Modal>
       )}

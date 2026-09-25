@@ -906,6 +906,10 @@ a {
   cursor: pointer;
 }
 
+a.settings-row {
+  text-decoration: none;
+}
+
 .settings-row:hover {
   background: var(--surface-hi);
 }

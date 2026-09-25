@@ -461,6 +461,8 @@
   outline-offset: 3px;
 }
 
+/* Hint on the empty line you're on (Notion style), and on an empty page. */
+.prose-editor .is-empty::before,
 .prose-editor p.is-editor-empty:first-child::before {
   color: var(--muted);
   content: attr(data-placeholder);
@@ -670,4 +672,86 @@
     width: 40px;
     height: 40px;
   }
+}
+
+/* Desktop (mouse): Notion-style — no fixed toolbar; select text for the
+   formatting bar, type "/" for blocks. Touch screens keep the toolbar. */
+@media (hover: hover) and (pointer: fine) {
+  .editor-toolbar {
+    display: none;
+  }
+}
+
+.bubble .separator {
+  height: 18px;
+  margin: 0 2px;
+}
+
+/* "/" block menu */
+.slash-menu {
+  position: fixed;
+  z-index: 70;
+  width: 264px;
+  max-height: 312px;
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  animation: fadeIn 0.1s ease;
+}
+
+.slash-menu.above {
+  transform: translateY(-100%);
+}
+
+.slash-menu-title {
+  padding: 6px 8px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.slash-item {
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.slash-item[aria-selected='true'] {
+  background: var(--surface-hi);
+}
+
+.slash-item strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.slash-item small {
+  display: block;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.slash-icon {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-hi);
+  color: var(--secondary);
 }

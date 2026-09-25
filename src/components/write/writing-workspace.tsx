@@ -17,7 +17,7 @@ import {
   Code, Copy, Download, Focus, Heading1, Heading2, Heading3,
   Italic, Link2, List, ListOrdered, Minimize2, Plus, Printer,
   Quote, Redo2, Rows, Search, Strikethrough, Table2, Trash2,
-  Underline as UnderlineIcon, Undo2, Unlink, Upload, X
+  Underline as UnderlineIcon, Undo2, Unlink, Upload, X, Columns2, Image as ImageIcon
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { db, exportBackup, importBackup, isQuotaError, parseBackup } from '@/lib/db'
@@ -26,6 +26,8 @@ import { markdownToHtml, toMarkdown } from '@/lib/markdown'
 import { imageFileToDataUrl, isImageFile } from '@/lib/images'
 import type { EditorView } from '@tiptap/pm/view'
 import { ImageNode } from './image-node'
+import { SlashMenu } from './slash-menu'
+import { NodeSelection } from '@tiptap/pm/state'
 import { Modal } from '../modal'
 import { SaveIndicator } from '../save-indicator'
 import { MenuButton } from '../menu-button'
@@ -51,7 +53,16 @@ const extensions = [
   StarterKit,
   Underline,
   Link.configure({ openOnClick: false }),
-  Placeholder.configure({ placeholder: 'Start writing…' }),
+  // Notion-style hints: on an empty page, and on whichever empty line you're on.
+  Placeholder.configure({
+    showOnlyCurrent: true,
+    placeholder: ({ editor, node }) =>
+      node.type.name === 'heading'
+        ? `Heading ${node.attrs.level}`
+        : editor.isEmpty
+          ? "Start writing, or type '/' for blocks"
+          : "Type '/' for blocks",
+  }),
   TextAlign.configure({ types: ['heading', 'paragraph'] }),
   TaskList,
   TaskItem.configure({ nested: true }),
@@ -95,6 +106,7 @@ export default function WritingWorkspace() {
   const [contentVersion, setContentVersion] = useState(0)
 
   const fileRef = useRef<HTMLInputElement>(null)
+  const imageFileRef = useRef<HTMLInputElement>(null)
   const titleRef = useRef<HTMLInputElement>(null)
   const focusTitleNext = useRef(false)
 
@@ -701,7 +713,19 @@ export default function WritingWorkspace() {
         )}
 
         {/* Formatting Toolbar */}
-        <Toolbar editor={editor} onOpenLink={openLinkDialog} />
+        <Toolbar editor={editor} onOpenLink={openLinkDialog} onPickImage={() => imageFileRef.current?.click()} />
+        <input
+          ref={imageFileRef}
+          className="sr-only"
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={e => {
+            const files = [...(e.target.files ?? [])]
+            if (editor && files.length) void insertImages(editor.view, files)
+            e.target.value = ''
+          }}
+        />
 
         {/* Scrollable Editor Container */}
         <div className="editor-scroll">
@@ -727,11 +751,45 @@ export default function WritingWorkspace() {
               />
 
               {editor && (
-                <BubbleMenu editor={editor} className="bubble">
-                  <Tool label="Bold" active={editor.isActive('bold')} click={() => editor.chain().focus().toggleBold().run()} icon={<Bold />} />
-                  <Tool label="Italic" active={editor.isActive('italic')} click={() => editor.chain().focus().toggleItalic().run()} icon={<Italic />} />
-                  <Tool label="Link" active={editor.isActive('link')} click={openLinkDialog} icon={<Link2 />} />
-                </BubbleMenu>
+                <>
+                  {/* Select text → formatting, like Notion. */}
+                  <BubbleMenu
+                    editor={editor}
+                    pluginKey="formatBubble"
+                    className="bubble"
+                    shouldShow={({ state }) =>
+                      !state.selection.empty && !(state.selection instanceof NodeSelection) && !editor.isActive('codeBlock')
+                    }
+                  >
+                    <Tool label="Heading 1" active={editor.isActive('heading', { level: 1 })} click={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} icon={<Heading1 />} />
+                    <Tool label="Heading 2" active={editor.isActive('heading', { level: 2 })} click={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} icon={<Heading2 />} />
+                    <span className="separator" />
+                    <Tool label="Bold" shortcut="B" active={editor.isActive('bold')} click={() => editor.chain().focus().toggleBold().run()} icon={<Bold />} />
+                    <Tool label="Italic" shortcut="I" active={editor.isActive('italic')} click={() => editor.chain().focus().toggleItalic().run()} icon={<Italic />} />
+                    <Tool label="Underline" shortcut="U" active={editor.isActive('underline')} click={() => editor.chain().focus().toggleUnderline().run()} icon={<UnderlineIcon />} />
+                    <Tool label="Strikethrough" active={editor.isActive('strike')} click={() => editor.chain().focus().toggleStrike().run()} icon={<Strikethrough />} />
+                    <Tool label="Inline code" active={editor.isActive('code')} click={() => editor.chain().focus().toggleCode().run()} icon={<Code />} />
+                    <Tool label="Link" shortcut="K" active={editor.isActive('link')} click={openLinkDialog} icon={<Link2 />} />
+                  </BubbleMenu>
+
+                  {/* Inside a table → row/column tools (the only place they live on desktop). */}
+                  <BubbleMenu
+                    editor={editor}
+                    pluginKey="tableBubble"
+                    className="bubble table-bubble"
+                    shouldShow={({ state }) => state.selection.empty && editor.isActive('table')}
+                    tippyOptions={{ placement: 'top-start' }}
+                  >
+                    <Tool label="Add row below" click={() => editor.chain().focus().addRowAfter().run()} icon={<Rows />} />
+                    <Tool label="Add column right" click={() => editor.chain().focus().addColumnAfter().run()} icon={<Plus />} />
+                    <Tool label="Delete row" click={() => editor.chain().focus().deleteRow().run()} icon={<Trash2 />} />
+                    <Tool label="Delete column" click={() => editor.chain().focus().deleteColumn().run()} icon={<Columns2 />} />
+                    <span className="separator" />
+                    <Tool label="Delete table" click={() => editor.chain().focus().deleteTable().run()} icon={<X />} />
+                  </BubbleMenu>
+
+                  <SlashMenu editor={editor} onPickImage={() => imageFileRef.current?.click()} />
+                </>
               )}
 
               <EditorContent editor={editor} />
@@ -848,7 +906,7 @@ function Tool({
   )
 }
 
-function Toolbar({ editor, onOpenLink }: { editor: Editor; onOpenLink: () => void }) {
+function Toolbar({ editor, onOpenLink, onPickImage }: { editor: Editor; onOpenLink: () => void; onPickImage: () => void }) {
   if (!editor) return <div className="editor-toolbar" />
 
   const isTableActive = editor.isActive('table')
@@ -897,6 +955,7 @@ function Toolbar({ editor, onOpenLink }: { editor: Editor; onOpenLink: () => voi
 
       <span className="separator" />
 
+      <Tool label="Image" click={onPickImage} icon={<ImageIcon />} />
       <Tool
         label="Insert table (3x3)"
         active={isTableActive}

@@ -12,42 +12,826 @@ import Table from '@tiptap/extension-table'
 import TableRow from '@tiptap/extension-table-row'
 import TableHeader from '@tiptap/extension-table-header'
 import TableCell from '@tiptap/extension-table-cell'
-import { AlignCenter, AlignLeft, AlignRight, Bold, Check, ChevronLeft, ChevronRight, Code, Download, FilePlus2, Focus, Heading1, Heading2, Heading3, Italic, Link2, List, ListOrdered, MoreHorizontal, Printer, Quote, Redo2, Search, Strikethrough, Table2, Trash2, Underline as UnderlineIcon, Undo2, Upload, X } from 'lucide-react'
+import {
+  AlignCenter, AlignLeft, AlignRight, Bold, Check, ChevronLeft, ChevronRight,
+  Code, Copy, Download, FilePlus2, Focus, Heading1, Heading2, Heading3,
+  Italic, Link2, List, ListOrdered, Minimize2, Plus, Printer,
+  Quote, Redo2, Rows, Search, Strikethrough, Table2, Trash2,
+  Underline as UnderlineIcon, Undo2, Unlink, Upload, X
+} from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { db, exportBackup, importBackup, isQuotaError, parseBackup } from '@/lib/db'
 import { EMPTY_CONTENT, newDocument, type LocalDocument, type SaveState } from '@/lib/models'
 import './write.css'
 
-const download=(name:string,text:string,type='application/json')=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();URL.revokeObjectURL(a.href)}
-const plainText=(node:unknown):string=>{if(!node||typeof node!=='object')return '';const n=node as {text?:string;content?:unknown[]};return n.text??(n.content?.map(plainText).join(' ')??'')}
-const timeAgo=(iso:string)=>new Intl.RelativeTimeFormat('en',{numeric:'auto'}).format(-Math.max(1,Math.round((Date.now()-Date.parse(iso))/60000)),'minute')
-
-export default function WritingWorkspace(){
- const [docs,setDocs]=useState<LocalDocument[]>([]),[activeId,setActiveId]=useState(''),[loading,setLoading]=useState(true),[save,setSave]=useState<SaveState>('idle'),[sidebar,setSidebar]=useState(true),[focus,setFocus]=useState(false),[query,setQuery]=useState(''),[notice,setNotice]=useState<{text:string;error?:boolean}|null>(null),[findOpen,setFindOpen]=useState(false),[find,setFind]=useState(''),[replace,setReplace]=useState('');const saveTimer=useRef<ReturnType<typeof setTimeout>|null>(null),fileRef=useRef<HTMLInputElement>(null)
- const active=docs.find(d=>d.id===activeId)
- const refresh=useCallback(async(id?:string)=>{const all=await db.documents.orderBy('updatedAt').reverse().toArray();setDocs(all);const wanted=id||localStorage.getItem('my-space:last-document')||all[0]?.id;if(wanted)setActiveId(all.some(d=>d.id===wanted)?wanted:all[0]?.id)},[])
- useEffect(()=>{if(!('indexedDB'in window)){setNotice({text:'IndexedDB is unavailable. Work cannot be saved in this browser.',error:true});setLoading(false);return}void(async()=>{try{let all=await db.documents.toArray();if(!all.length){const first=newDocument('Welcome to My Space');first.content={type:'doc',content:[{type:'heading',attrs:{level:1},content:[{type:'text',text:'A quiet place for clear thinking.'}]},{type:'paragraph',content:[{type:'text',text:'Everything you write stays in this browser. Start typing, or press / for ideas.'}]}]};await db.documents.add(first);all=[first]}await refresh();setSave('saved')}catch{setNotice({text:'Local storage could not be opened. Your current work will remain on screen.',error:true})}finally{setLoading(false)}})()},[refresh])
- const editor=useEditor({immediatelyRender:false,extensions:[StarterKit,Underline,Link.configure({openOnClick:false}),Placeholder.configure({placeholder:'Start writing… Type / for commands'}),TextAlign.configure({types:['heading','paragraph']}),TaskList,TaskItem.configure({nested:true}),Table.configure({resizable:true}),TableRow,TableHeader,TableCell],content:active?.content??EMPTY_CONTENT,editorProps:{attributes:{class:'prose-editor','aria-label':'Document content'},transformPastedHTML:html=>html.replace(/ style="[^"]*"/gi,'')},onUpdate:({editor:e})=>{if(!activeId)return;const content=e.getJSON();setDocs(old=>old.map(d=>d.id===activeId?{...d,content}:d));setSave('saving');if(saveTimer.current)clearTimeout(saveTimer.current);saveTimer.current=setTimeout(async()=>{try{const updatedAt=new Date().toISOString();await db.documents.update(activeId,{content,updatedAt});setDocs(old=>old.map(d=>d.id===activeId?{...d,updatedAt}:d));setSave('saved')}catch(err){setSave('error');setNotice({text:isQuotaError(err)?'Browser storage is full. Export a backup now; your open work remains available.':'Save failed. Export your work before closing this tab.',error:true})}},650)}},[activeId])
- useEffect(()=>{if(active&&editor&&!editor.isDestroyed){editor.commands.setContent(active.content,false);localStorage.setItem('my-space:last-document',active.id)}},[activeId,active?.id,editor])
- useEffect(()=>()=>{if(saveTimer.current)clearTimeout(saveTimer.current)},[])
- const create=async()=>{const d=newDocument();await db.documents.add(d);await refresh(d.id);requestAnimationFrame(()=>editor?.commands.focus())}
- const updateTitle=(title:string)=>{if(!active)return;setDocs(v=>v.map(d=>d.id===active.id?{...d,title}:d));setSave('saving');if(saveTimer.current)clearTimeout(saveTimer.current);saveTimer.current=setTimeout(async()=>{try{await db.documents.update(active.id,{title:title||'Untitled document',updatedAt:new Date().toISOString()});setSave('saved')}catch{setSave('error')}},500)}
- const duplicate=async(d:LocalDocument)=>{const copy={...d,id:crypto.randomUUID(),title:`${d.title} copy`,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};await db.documents.add(copy);await refresh(copy.id)}
- const remove=async(d:LocalDocument)=>{if(!confirm(`Delete “${d.title}”? This cannot be undone.`))return;await db.documents.delete(d.id);let remaining=docs.filter(x=>x.id!==d.id);if(!remaining.length){const fresh=newDocument();await db.documents.add(fresh);remaining=[fresh]}await refresh(remaining[0].id)}
- const backup=async()=>download(`my-space-${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(await exportBackup(),null,2))
- const importFile=async(file?:File)=>{if(!file)return;try{const raw=await file.text();if(file.name.endsWith('.json')){await importBackup(parseBackup(JSON.parse(raw)));await refresh();setNotice({text:'Backup imported successfully.'})}else{const d=newDocument(file.name.replace(/\.[^.]+$/,''));d.content={type:'doc',content:raw.split(/\n{2,}/).map(p=>({type:'paragraph',content:p?[{type:'text',text:p}]:undefined}))};await db.documents.add(d);await refresh(d.id);setNotice({text:'Document imported.'})}}catch(err){setNotice({text:err instanceof Error?err.message:'Import failed. Choose a valid file.',error:true})}finally{if(fileRef.current)fileRef.current.value=''}}
- const filtered=docs.filter(d=>d.title.toLowerCase().includes(query.toLowerCase()))
- const words=plainText(active?.content).trim().split(/\s+/).filter(Boolean).length,chars=plainText(active?.content).length
- const exportActive=(format:string)=>{if(!active||!editor||!format)return;const safe=(active.title||'document').replace(/[^a-z0-9-_ ]/gi,'').trim()||'document';if(format==='html')download(`${safe}.html`,`<!doctype html><meta charset="utf-8"><title>${safe}</title><article>${editor.getHTML()}</article>`,'text/html');if(format==='txt')download(`${safe}.txt`,editor.getText(),'text/plain');if(format==='md')download(`${safe}.md`,editor.getText({blockSeparator:'\n\n'}),'text/markdown')}
- if(loading)return <div className="center-state"><div className="spinner"/><p>Restoring documents…</p></div>
- return <div className={`writing ${sidebar?'':'sidebar-hidden'} ${focus?'focus':''}`}>
-  <aside className="documents" aria-label="Documents"><div className="docs-head"><div><span className="eyebrow">Writing mode</span><h1>Documents</h1></div><button className="icon-button" onClick={create} aria-label="New document"><FilePlus2/></button></div><label className="search"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search documents"/></label><div className="document-list">{filtered.map(d=><button className={`document-row ${d.id===activeId?'active':''}`} key={d.id} onClick={()=>setActiveId(d.id)}><span className="doc-title">{d.title||'Untitled document'}</span><span className="doc-time">{timeAgo(d.updatedAt)}</span><span className="doc-actions" onClick={e=>e.stopPropagation()}><span role="button" tabIndex={0} title="Duplicate" onClick={()=>void duplicate(d)}><MoreHorizontal size={15}/></span><span role="button" tabIndex={0} title="Delete" onClick={()=>void remove(d)}><Trash2 size={14}/></span></span></button>)}</div><div className="docs-footer"><button className="button" onClick={()=>fileRef.current?.click()}><Upload size={16}/>Import</button><button className="button" onClick={()=>void backup()}><Download size={16}/>Backup</button><input ref={fileRef} className="sr-only" type="file" accept=".json,.md,.txt,.html" onChange={e=>void importFile(e.target.files?.[0])}/><p>Stored only in this browser. Clearing site data removes your work.</p></div></aside>
-  <section className="writer"><header className="write-header"><button className="icon-button" onClick={()=>setSidebar(v=>!v)} aria-label="Toggle documents">{sidebar?<ChevronLeft/>:<ChevronRight/>}</button><div className="save-state" data-state={save}><span className="dot"/>{save==='saving'?'Saving…':save==='error'?'Save failed':'Saved locally'}</div><div className="header-actions"><label className="export-select" title="Export document"><Download/><select aria-label="Export document" defaultValue="" onChange={e=>{exportActive(e.target.value);e.target.value=''}}><option value="" disabled>Export</option><option value="md">Markdown</option><option value="txt">Plain text</option><option value="html">HTML</option></select></label><button className="icon-button" onClick={()=>setFindOpen(v=>!v)} aria-label="Find and replace"><Search/></button><button className="icon-button" onClick={()=>window.print()} aria-label="Print or save as PDF"><Printer/></button><button className="icon-button" onClick={()=>setFocus(v=>!v)} aria-label="Focus mode"><Focus/></button></div></header>
-   {findOpen&&<div className="find-bar"><input className="input" value={find} onChange={e=>setFind(e.target.value)} placeholder="Find"/><input className="input" value={replace} onChange={e=>setReplace(e.target.value)} placeholder="Replace with"/><button className="button" onClick={()=>{if(!editor||!find)return;editor.commands.setContent(editor.getHTML().replaceAll(find,replace))}}>Replace all</button><button className="icon-button" onClick={()=>setFindOpen(false)} aria-label="Close"><X/></button></div>}
-   <Toolbar editor={editor}/><div className="editor-scroll">{active?<article className="page"><input className="title-input" value={active.title} onChange={e=>updateTitle(e.target.value)} aria-label="Document title" placeholder="Untitled document"/>{editor&&<BubbleMenu editor={editor} className="bubble"><Tool label="Bold" active={editor.isActive('bold')} click={()=>editor.chain().focus().toggleBold().run()} icon={<Bold/>}/><Tool label="Italic" active={editor.isActive('italic')} click={()=>editor.chain().focus().toggleItalic().run()} icon={<Italic/>}/><Tool label="Link" click={()=>{const url=prompt('Link URL');if(url)editor.chain().focus().setLink({href:url}).run()}} icon={<Link2/>}/></BubbleMenu>}<EditorContent editor={editor}/><footer className="document-stats"><span>{words} words</span><span>{chars} characters</span><span>~{Math.max(1,Math.ceil(words/220))} min read</span></footer></article>:<div className="empty"><h2>No documents found</h2><button className="button primary" onClick={create}>Create a document</button></div>}</div>
-  </section>{notice&&<div className={`toast ${notice.error?'error':''}`} role="status">{notice.text}<button className="icon-button" onClick={()=>setNotice(null)} aria-label="Dismiss"><X/></button>{notice.error&&<button className="button" onClick={()=>void backup()}>Export backup now</button>}</div>}
- </div>
+const download = (name: string, text: string, type = 'application/json') => {
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(new Blob([text], { type }))
+  a.download = name
+  a.click()
+  URL.revokeObjectURL(a.href)
 }
-type Editor=ReturnType<typeof useEditor>
-function Tool({label,icon,click,active=false}:{label:string;icon:React.ReactNode;click:()=>void;active?:boolean}){return <button type="button" title={label} aria-label={label} aria-pressed={active} className={`tool ${active?'active':''}`} onClick={click}>{icon}</button>}
-function Toolbar({editor}:{editor:Editor}){if(!editor)return <div className="editor-toolbar"/>;const link=()=>{const href=prompt('Link URL',editor.getAttributes('link').href||'https://');if(href===null)return;if(!href)editor.chain().focus().unsetLink().run();else editor.chain().focus().setLink({href}).run()};return <div className="editor-toolbar" role="toolbar" aria-label="Formatting"><Tool label="Undo" click={()=>editor.chain().focus().undo().run()} icon={<Undo2/>}/><Tool label="Redo" click={()=>editor.chain().focus().redo().run()} icon={<Redo2/>}/><span className="separator"/><Tool label="Heading 1" active={editor.isActive('heading',{level:1})} click={()=>editor.chain().focus().toggleHeading({level:1}).run()} icon={<Heading1/>}/><Tool label="Heading 2" active={editor.isActive('heading',{level:2})} click={()=>editor.chain().focus().toggleHeading({level:2}).run()} icon={<Heading2/>}/><Tool label="Heading 3" active={editor.isActive('heading',{level:3})} click={()=>editor.chain().focus().toggleHeading({level:3}).run()} icon={<Heading3/>}/><span className="separator"/><Tool label="Bold" active={editor.isActive('bold')} click={()=>editor.chain().focus().toggleBold().run()} icon={<Bold/>}/><Tool label="Italic" active={editor.isActive('italic')} click={()=>editor.chain().focus().toggleItalic().run()} icon={<Italic/>}/><Tool label="Underline" active={editor.isActive('underline')} click={()=>editor.chain().focus().toggleUnderline().run()} icon={<UnderlineIcon/>}/><Tool label="Strike" active={editor.isActive('strike')} click={()=>editor.chain().focus().toggleStrike().run()} icon={<Strikethrough/>}/><Tool label="Inline code" active={editor.isActive('code')} click={()=>editor.chain().focus().toggleCode().run()} icon={<Code/>}/><Tool label="Link" active={editor.isActive('link')} click={link} icon={<Link2/>}/><span className="separator"/><Tool label="Bullet list" active={editor.isActive('bulletList')} click={()=>editor.chain().focus().toggleBulletList().run()} icon={<List/>}/><Tool label="Numbered list" active={editor.isActive('orderedList')} click={()=>editor.chain().focus().toggleOrderedList().run()} icon={<ListOrdered/>}/><Tool label="Checklist" active={editor.isActive('taskList')} click={()=>editor.chain().focus().toggleTaskList().run()} icon={<Check/>}/><Tool label="Quote" active={editor.isActive('blockquote')} click={()=>editor.chain().focus().toggleBlockquote().run()} icon={<Quote/>}/><Tool label="Table" click={()=>editor.chain().focus().insertTable({rows:3,cols:3,withHeaderRow:true}).run()} icon={<Table2/>}/><Tool label="Align left" click={()=>editor.chain().focus().setTextAlign('left').run()} icon={<AlignLeft/>}/><Tool label="Align center" click={()=>editor.chain().focus().setTextAlign('center').run()} icon={<AlignCenter/>}/><Tool label="Align right" click={()=>editor.chain().focus().setTextAlign('right').run()} icon={<AlignRight/>}/><Tool label="Clear formatting" click={()=>editor.chain().focus().unsetAllMarks().clearNodes().run()} icon={<X/>}/></div>}
+
+const plainText = (node: unknown): string => {
+  if (!node || typeof node !== 'object') return ''
+  const n = node as { text?: string; content?: unknown[] }
+  return n.text ?? (n.content?.map(plainText).join(' ') ?? '')
+}
+
+const timeAgo = (iso: string) => {
+  const diffMinutes = Math.max(1, Math.round((Date.now() - Date.parse(iso)) / 60000))
+  if (diffMinutes < 60) {
+    return new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(-diffMinutes, 'minute')
+  }
+  const diffHours = Math.round(diffMinutes / 60)
+  if (diffHours < 24) {
+    return new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(-diffHours, 'hour')
+  }
+  return new Date(iso).toLocaleDateString()
+}
+
+export default function WritingWorkspace() {
+  const [docs, setDocs] = useState<LocalDocument[]>([])
+  const [activeId, setActiveId] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [save, setSave] = useState<SaveState>('idle')
+  const [sidebar, setSidebar] = useState(true)
+  const [focus, setFocus] = useState(false)
+  const [query, setQuery] = useState('')
+  const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null)
+
+  // Find & Replace state
+  const [findOpen, setFindOpen] = useState(false)
+  const [findQuery, setFindQuery] = useState('')
+  const [replaceQuery, setReplaceQuery] = useState('')
+  const [findStatus, setFindStatus] = useState('')
+
+  // Link dialog state
+  const [linkOpen, setLinkOpen] = useState(false)
+  const [linkUrl, setLinkUrl] = useState('')
+
+  // Delete modal state
+  const [docToDelete, setDocToDelete] = useState<LocalDocument | null>(null)
+
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const active = docs.find(d => d.id === activeId)
+
+  const refresh = useCallback(async (id?: string) => {
+    const all = await db.documents.orderBy('updatedAt').reverse().toArray()
+    setDocs(all)
+    const wanted = id || localStorage.getItem('my-space:last-document') || all[0]?.id
+    if (wanted) {
+      setActiveId(all.some(d => d.id === wanted) ? wanted : all[0]?.id)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!('indexedDB' in window)) {
+      setNotice({ text: 'IndexedDB is unavailable. Work cannot be saved in this browser.', error: true })
+      setLoading(false)
+      return
+    }
+
+    void (async () => {
+      try {
+        let all = await db.documents.toArray()
+        if (!all.length) {
+          const first = newDocument('Welcome to My Space')
+          first.content = {
+            type: 'doc',
+            content: [
+              {
+                type: 'heading',
+                attrs: { level: 1 },
+                content: [{ type: 'text', text: 'A quiet place for clear thinking.' }],
+              },
+              {
+                type: 'paragraph',
+                content: [{ type: 'text', text: 'Everything you write stays in this browser. Start typing, or format your text using the toolbar.' }],
+              },
+            ],
+          }
+          await db.documents.add(first)
+          all = [first]
+        }
+        await refresh()
+        setSave('saved')
+      } catch {
+        setNotice({ text: 'Local storage could not be opened. Your current work will remain on screen.', error: true })
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [refresh])
+
+  const editor = useEditor(
+    {
+      immediatelyRender: false,
+      extensions: [
+        StarterKit,
+        Underline,
+        Link.configure({ openOnClick: false }),
+        Placeholder.configure({ placeholder: 'Start writing… Select text for quick tools.' }),
+        TextAlign.configure({ types: ['heading', 'paragraph'] }),
+        TaskList,
+        TaskItem.configure({ nested: true }),
+        Table.configure({ resizable: true }),
+        TableRow,
+        TableHeader,
+        TableCell,
+      ],
+      content: active?.content ?? EMPTY_CONTENT,
+      editorProps: {
+        attributes: { class: 'prose-editor', 'aria-label': 'Document content' },
+        transformPastedHTML: html => html.replace(/ style="[^"]*"/gi, ''),
+      },
+      onUpdate: ({ editor: e }) => {
+        if (!activeId) return
+        const content = e.getJSON()
+        setDocs(old => old.map(d => (d.id === activeId ? { ...d, content } : d)))
+        setSave('saving')
+        if (saveTimer.current) clearTimeout(saveTimer.current)
+        saveTimer.current = setTimeout(async () => {
+          try {
+            const updatedAt = new Date().toISOString()
+            await db.documents.update(activeId, { content, updatedAt })
+            setDocs(old => old.map(d => (d.id === activeId ? { ...d, updatedAt } : d)))
+            setSave('saved')
+          } catch (err) {
+            setSave('error')
+            setNotice({
+              text: isQuotaError(err)
+                ? 'Browser storage is full. Export a backup now; your open work remains available.'
+                : 'Save failed. Export your work before closing this tab.',
+              error: true,
+            })
+          }
+        }, 650)
+      },
+    },
+    [activeId]
+  )
+
+  useEffect(() => {
+    if (active && editor && !editor.isDestroyed) {
+      editor.commands.setContent(active.content, false)
+      localStorage.setItem('my-space:last-document', active.id)
+    }
+  }, [activeId, active, editor])
+
+  useEffect(() => () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+  }, [])
+
+  // Link Dialog open helper
+  const openLinkDialog = useCallback(() => {
+    if (!editor) return
+    const current = editor.getAttributes('link').href || ''
+    setLinkUrl(current)
+    setLinkOpen(true)
+  }, [editor])
+
+  // Keyboard shortcuts (Escape, Cmd+F, Cmd+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (focus) {
+          setFocus(false)
+        } else if (findOpen) {
+          setFindOpen(false)
+        } else if (linkOpen) {
+          setLinkOpen(false)
+        } else if (docToDelete) {
+          setDocToDelete(null)
+        }
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        setFindOpen(v => !v)
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        openLinkDialog()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [focus, findOpen, linkOpen, docToDelete, openLinkDialog])
+
+  const create = async () => {
+    const d = newDocument()
+    await db.documents.add(d)
+    await refresh(d.id)
+    requestAnimationFrame(() => editor?.commands.focus())
+  }
+
+  const updateTitle = (title: string) => {
+    if (!active) return
+    setDocs(v => v.map(d => (d.id === active.id ? { ...d, title } : d)))
+    setSave('saving')
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(async () => {
+      try {
+        await db.documents.update(active.id, {
+          title: title || 'Untitled document',
+          updatedAt: new Date().toISOString(),
+        })
+        setSave('saved')
+      } catch {
+        setSave('error')
+      }
+    }, 500)
+  }
+
+  const duplicate = async (d: LocalDocument) => {
+    const copy = {
+      ...d,
+      id: crypto.randomUUID(),
+      title: `${d.title} (Copy)`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+    await db.documents.add(copy)
+    await refresh(copy.id)
+    setNotice({ text: `Duplicated "${copy.title}"` })
+  }
+
+  const confirmDelete = async () => {
+    if (!docToDelete) return
+    const target = docToDelete
+    setDocToDelete(null)
+    await db.documents.delete(target.id)
+    let remaining = docs.filter(x => x.id !== target.id)
+    if (!remaining.length) {
+      const fresh = newDocument()
+      await db.documents.add(fresh)
+      remaining = [fresh]
+    }
+    await refresh(remaining[0].id)
+    setNotice({ text: `Deleted "${target.title}"` })
+  }
+
+  const backup = async () =>
+    download(`my-space-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(await exportBackup(), null, 2))
+
+  const importFile = async (file?: File) => {
+    if (!file) return
+    try {
+      const raw = await file.text()
+      if (file.name.endsWith('.json')) {
+        await importBackup(parseBackup(JSON.parse(raw)))
+        await refresh()
+        setNotice({ text: 'Backup imported successfully.' })
+      } else {
+        const d = newDocument(file.name.replace(/\.[^.]+$/, ''))
+        d.content = {
+          type: 'doc',
+          content: raw.split(/\n{2,}/).map(p => ({
+            type: 'paragraph',
+            content: p ? [{ type: 'text', text: p }] : undefined,
+          })),
+        }
+        await db.documents.add(d)
+        await refresh(d.id)
+        setNotice({ text: 'Document imported.' })
+      }
+    } catch (err) {
+      setNotice({ text: err instanceof Error ? err.message : 'Import failed. Choose a valid file.', error: true })
+    } finally {
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  // Safe Find & Replace using ProseMirror transaction
+  const countMatches = useCallback(() => {
+    if (!editor || !findQuery) {
+      setFindStatus('')
+      return 0
+    }
+    const { doc } = editor.state
+    let count = 0
+    doc.descendants(node => {
+      if (node.isText && node.text) {
+        const textLower = node.text.toLowerCase()
+        const queryLower = findQuery.toLowerCase()
+        let idx = textLower.indexOf(queryLower)
+        while (idx !== -1) {
+          count++
+          idx = textLower.indexOf(queryLower, idx + queryLower.length)
+        }
+      }
+    })
+    setFindStatus(count === 0 ? 'No matches' : `${count} match${count > 1 ? 'es' : ''}`)
+    return count
+  }, [editor, findQuery])
+
+  useEffect(() => {
+    if (findOpen) {
+      countMatches()
+    }
+  }, [findQuery, findOpen, countMatches])
+
+  const safeReplaceAll = () => {
+    if (!editor || !findQuery) return
+    const { doc, tr } = editor.state
+    let count = 0
+    const changes: { from: number; to: number }[] = []
+
+    doc.descendants((node, pos) => {
+      if (node.isText && node.text) {
+        const textLower = node.text.toLowerCase()
+        const queryLower = findQuery.toLowerCase()
+        let idx = textLower.indexOf(queryLower)
+        while (idx !== -1) {
+          changes.push({ from: pos + idx, to: pos + idx + findQuery.length })
+          count++
+          idx = textLower.indexOf(queryLower, idx + queryLower.length)
+        }
+      }
+    })
+
+    // Apply backwards to preserve coordinate validity
+    for (let i = changes.length - 1; i >= 0; i--) {
+      const { from, to } = changes[i]
+      tr.insertText(replaceQuery, from, to)
+    }
+
+    if (count > 0) {
+      editor.view.dispatch(tr)
+      setFindStatus(`Replaced ${count} occurrence${count > 1 ? 's' : ''}`)
+    } else {
+      setFindStatus('No matches found')
+    }
+  }
+
+
+  const applyLink = () => {
+    if (!editor) return
+    const trimmed = linkUrl.trim()
+    if (!trimmed) {
+      editor.chain().focus().unsetLink().run()
+    } else {
+      const url = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+      editor.chain().focus().setLink({ href: url }).run()
+    }
+    setLinkOpen(false)
+  }
+
+  const removeLink = () => {
+    if (editor) {
+      editor.chain().focus().unsetLink().run()
+    }
+    setLinkOpen(false)
+  }
+
+  const filtered = docs.filter(d => d.title.toLowerCase().includes(query.toLowerCase()))
+  const words = plainText(active?.content).trim().split(/\s+/).filter(Boolean).length
+  const chars = plainText(active?.content).length
+
+  const exportActive = (format: string) => {
+    if (!active || !editor || !format) return
+    const safe = (active.title || 'document').replace(/[^a-z0-9-_ ]/gi, '').trim() || 'document'
+    if (format === 'html') {
+      download(`${safe}.html`, `<!doctype html><meta charset="utf-8"><title>${safe}</title><article>${editor.getHTML()}</article>`, 'text/html')
+    }
+    if (format === 'txt') {
+      download(`${safe}.txt`, editor.getText(), 'text/plain')
+    }
+    if (format === 'md') {
+      download(`${safe}.md`, editor.getText({ blockSeparator: '\n\n' }), 'text/markdown')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="center-state">
+        <div className="spinner" />
+        <p>Restoring documents…</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className={`writing ${sidebar ? '' : 'sidebar-hidden'} ${focus ? 'focus' : ''}`}>
+      {/* Floating Exit Focus Mode Button */}
+      {focus && (
+        <button
+          className="exit-focus-btn"
+          onClick={() => setFocus(false)}
+          title="Exit focus mode (Esc)"
+          aria-label="Exit focus mode"
+        >
+          <Minimize2 size={16} />
+          <span>Exit Focus</span>
+          <kbd className="kbd-hint">Esc</kbd>
+        </button>
+      )}
+
+      {/* Sidebar / Document Library */}
+      <aside className="documents" aria-label="Documents">
+        <div className="docs-head">
+          <div>
+            <span className="eyebrow">Writing mode</span>
+            <h1>Documents</h1>
+          </div>
+          <button className="icon-button" onClick={create} aria-label="New document" title="Create new document">
+            <FilePlus2 size={20} />
+          </button>
+        </div>
+
+        <label className="search">
+          <Search size={16} />
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search documents…"
+            aria-label="Search documents"
+          />
+        </label>
+
+        <div className="document-list">
+          {filtered.map(d => {
+            const isActive = d.id === activeId
+            return (
+              <div className={`document-row ${isActive ? 'active' : ''}`} key={d.id}>
+                <button
+                  type="button"
+                  className="doc-select-btn"
+                  onClick={() => setActiveId(d.id)}
+                  aria-current={isActive ? 'true' : undefined}
+                >
+                  <span className="doc-title">{d.title || 'Untitled document'}</span>
+                  <span className="doc-time">{timeAgo(d.updatedAt)}</span>
+                </button>
+                <div className="doc-actions">
+                  <button
+                    type="button"
+                    className="doc-action-btn"
+                    title="Duplicate document"
+                    aria-label={`Duplicate ${d.title}`}
+                    onClick={e => {
+                      e.stopPropagation()
+                      void duplicate(d)
+                    }}
+                  >
+                    <Copy size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="doc-action-btn delete-btn"
+                    title="Delete document"
+                    aria-label={`Delete ${d.title}`}
+                    onClick={e => {
+                      e.stopPropagation()
+                      setDocToDelete(d)
+                    }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="docs-footer">
+          <button className="button" onClick={() => fileRef.current?.click()}>
+            <Upload size={15} /> Import
+          </button>
+          <button className="button" onClick={() => void backup()}>
+            <Download size={15} /> Backup
+          </button>
+          <input
+            ref={fileRef}
+            className="sr-only"
+            type="file"
+            accept=".json,.md,.txt,.html"
+            onChange={e => void importFile(e.target.files?.[0])}
+          />
+          <p>Saved in this browser. Regular backups keep your thoughts safe.</p>
+        </div>
+      </aside>
+
+      {/* Main Writer Area */}
+      <section className="writer">
+        <header className="write-header">
+          <button
+            className="icon-button"
+            onClick={() => setSidebar(v => !v)}
+            aria-label={sidebar ? 'Hide documents sidebar' : 'Show documents sidebar'}
+            title={sidebar ? 'Hide sidebar' : 'Show sidebar'}
+          >
+            {sidebar ? <ChevronLeft size={19} /> : <ChevronRight size={19} />}
+          </button>
+
+          <div className="save-state" data-state={save}>
+            <span className="dot" />
+            {save === 'saving' ? 'Saving…' : save === 'error' ? 'Save failed' : 'Saved locally'}
+          </div>
+
+          <div className="header-actions">
+            <label className="export-select" title="Export document">
+              <Download size={15} />
+              <select
+                aria-label="Export document format"
+                defaultValue=""
+                onChange={e => {
+                  exportActive(e.target.value)
+                  e.target.value = ''
+                }}
+              >
+                <option value="" disabled>
+                  Export…
+                </option>
+                <option value="md">Markdown (.md)</option>
+                <option value="txt">Plain text (.txt)</option>
+                <option value="html">HTML document (.html)</option>
+              </select>
+            </label>
+
+            <button
+              className="icon-button"
+              onClick={() => setFindOpen(v => !v)}
+              aria-label="Find and replace"
+              title="Find and replace (⌘F)"
+            >
+              <Search size={18} />
+            </button>
+
+            <button
+              className="icon-button"
+              onClick={() => window.print()}
+              aria-label="Print or save as PDF"
+              title="Print or save as PDF"
+            >
+              <Printer size={18} />
+            </button>
+
+            <button
+              className="icon-button"
+              onClick={() => setFocus(true)}
+              aria-label="Focus mode"
+              title="Focus mode (full screen writing)"
+            >
+              <Focus size={18} />
+            </button>
+          </div>
+        </header>
+
+        {/* Find and Replace Bar */}
+        {findOpen && (
+          <div className="find-bar" role="search">
+            <input
+              className="input"
+              value={findQuery}
+              onChange={e => setFindQuery(e.target.value)}
+              placeholder="Find in document…"
+              autoFocus
+              onKeyDown={e => {
+                if (e.key === 'Enter') countMatches()
+              }}
+            />
+            <input
+              className="input"
+              value={replaceQuery}
+              onChange={e => setReplaceQuery(e.target.value)}
+              placeholder="Replace with…"
+              onKeyDown={e => {
+                if (e.key === 'Enter') safeReplaceAll()
+              }}
+            />
+            {findStatus && <span className="find-status">{findStatus}</span>}
+            <button className="button primary" onClick={safeReplaceAll}>
+              Replace all
+            </button>
+            <button className="icon-button" onClick={() => setFindOpen(false)} aria-label="Close find bar">
+              <X size={18} />
+            </button>
+          </div>
+        )}
+
+        {/* Formatting Toolbar */}
+        <Toolbar editor={editor} onOpenLink={openLinkDialog} />
+
+        {/* Scrollable Editor Container */}
+        <div className="editor-scroll">
+          {active ? (
+            <article className="page">
+              <input
+                className="title-input"
+                value={active.title}
+                onChange={e => updateTitle(e.target.value)}
+                aria-label="Document title"
+                placeholder="Untitled document"
+              />
+
+              {editor && (
+                <BubbleMenu editor={editor} className="bubble">
+                  <Tool label="Bold" active={editor.isActive('bold')} click={() => editor.chain().focus().toggleBold().run()} icon={<Bold />} />
+                  <Tool label="Italic" active={editor.isActive('italic')} click={() => editor.chain().focus().toggleItalic().run()} icon={<Italic />} />
+                  <Tool label="Link" active={editor.isActive('link')} click={openLinkDialog} icon={<Link2 />} />
+                </BubbleMenu>
+              )}
+
+              <EditorContent editor={editor} />
+
+              <footer className="document-stats">
+                <span>{words} words</span>
+                <span>{chars} characters</span>
+                <span>~{Math.max(1, Math.ceil(words / 220))} min read</span>
+              </footer>
+            </article>
+          ) : (
+            <div className="empty">
+              <h2>No documents found</h2>
+              <button className="button primary" onClick={create}>
+                Create a document
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Link Dialog Modal */}
+      {linkOpen && (
+        <div className="modal-overlay" onClick={() => setLinkOpen(false)}>
+          <div className="modal-dialog" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Insert Link</h3>
+              <button className="icon-button" onClick={() => setLinkOpen(false)} aria-label="Close">
+                <X size={18} />
+              </button>
+            </div>
+            <input
+              className="input"
+              value={linkUrl}
+              onChange={e => setLinkUrl(e.target.value)}
+              placeholder="https://example.com"
+              autoFocus
+              onKeyDown={e => {
+                if (e.key === 'Enter') applyLink()
+              }}
+            />
+            <div className="modal-footer">
+              {editor?.isActive('link') && (
+                <button type="button" className="button danger" onClick={removeLink}>
+                  <Unlink size={15} /> Remove
+                </button>
+              )}
+              <button type="button" className="button" onClick={() => setLinkOpen(false)}>
+                Cancel
+              </button>
+              <button type="button" className="button primary" onClick={applyLink}>
+                Save Link
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Document Confirmation Modal */}
+      {docToDelete && (
+        <div className="modal-overlay" onClick={() => setDocToDelete(null)}>
+          <div className="modal-dialog" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Delete Document</h3>
+              <button className="icon-button" onClick={() => setDocToDelete(null)} aria-label="Close">
+                <X size={18} />
+              </button>
+            </div>
+            <p className="muted" style={{ margin: 0, lineHeight: 1.5 }}>
+              Are you sure you want to delete <strong>“{docToDelete.title || 'Untitled document'}”</strong>? This action cannot be undone.
+            </p>
+            <div className="modal-footer">
+              <button type="button" className="button" onClick={() => setDocToDelete(null)}>
+                Cancel
+              </button>
+              <button type="button" className="button danger" onClick={() => void confirmDelete()}>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification Toast */}
+      {notice && (
+        <div className={`toast ${notice.error ? 'error' : ''}`} role="status">
+          <span>{notice.text}</span>
+          <button className="icon-button" onClick={() => setNotice(null)} aria-label="Dismiss notification">
+            <X size={16} />
+          </button>
+          {notice.error && (
+            <button className="button" onClick={() => void backup()}>
+              Export backup now
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+type Editor = ReturnType<typeof useEditor>
+
+function Tool({
+  label,
+  icon,
+  click,
+  active = false,
+}: {
+  label: string
+  icon: React.ReactNode
+  click: () => void
+  active?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      aria-pressed={active}
+      className={`tool ${active ? 'active' : ''}`}
+      onClick={click}
+    >
+      {icon}
+    </button>
+  )
+}
+
+function Toolbar({ editor, onOpenLink }: { editor: Editor; onOpenLink: () => void }) {
+  if (!editor) return <div className="editor-toolbar" />
+
+  const isTableActive = editor.isActive('table')
+
+  return (
+    <div className="editor-toolbar" role="toolbar" aria-label="Formatting tools">
+      <Tool label="Undo (⌘Z)" click={() => editor.chain().focus().undo().run()} icon={<Undo2 />} />
+      <Tool label="Redo (⌘⇧Z)" click={() => editor.chain().focus().redo().run()} icon={<Redo2 />} />
+
+      <span className="separator" />
+
+      <Tool
+        label="Heading 1"
+        active={editor.isActive('heading', { level: 1 })}
+        click={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+        icon={<Heading1 />}
+      />
+      <Tool
+        label="Heading 2"
+        active={editor.isActive('heading', { level: 2 })}
+        click={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+        icon={<Heading2 />}
+      />
+      <Tool
+        label="Heading 3"
+        active={editor.isActive('heading', { level: 3 })}
+        click={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+        icon={<Heading3 />}
+      />
+
+      <span className="separator" />
+
+      <Tool label="Bold (⌘B)" active={editor.isActive('bold')} click={() => editor.chain().focus().toggleBold().run()} icon={<Bold />} />
+      <Tool label="Italic (⌘I)" active={editor.isActive('italic')} click={() => editor.chain().focus().toggleItalic().run()} icon={<Italic />} />
+      <Tool label="Underline (⌘U)" active={editor.isActive('underline')} click={() => editor.chain().focus().toggleUnderline().run()} icon={<UnderlineIcon />} />
+      <Tool label="Strikethrough" active={editor.isActive('strike')} click={() => editor.chain().focus().toggleStrike().run()} icon={<Strikethrough />} />
+      <Tool label="Inline code" active={editor.isActive('code')} click={() => editor.chain().focus().toggleCode().run()} icon={<Code />} />
+      <Tool label="Link (⌘K)" active={editor.isActive('link')} click={onOpenLink} icon={<Link2 />} />
+
+      <span className="separator" />
+
+      <Tool label="Bullet list" active={editor.isActive('bulletList')} click={() => editor.chain().focus().toggleBulletList().run()} icon={<List />} />
+      <Tool label="Numbered list" active={editor.isActive('orderedList')} click={() => editor.chain().focus().toggleOrderedList().run()} icon={<ListOrdered />} />
+      <Tool label="Task checklist" active={editor.isActive('taskList')} click={() => editor.chain().focus().toggleTaskList().run()} icon={<Check />} />
+      <Tool label="Blockquote" active={editor.isActive('blockquote')} click={() => editor.chain().focus().toggleBlockquote().run()} icon={<Quote />} />
+
+      <span className="separator" />
+
+      <Tool
+        label="Insert table (3x3)"
+        active={isTableActive}
+        click={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+        icon={<Table2 />}
+      />
+
+      {isTableActive && (
+        <div className="table-tools" title="Table management">
+          <Tool label="Add row after" click={() => editor.chain().focus().addRowAfter().run()} icon={<Rows />} />
+          <Tool label="Delete current row" click={() => editor.chain().focus().deleteRow().run()} icon={<Trash2 />} />
+          <Tool label="Add column after" click={() => editor.chain().focus().addColumnAfter().run()} icon={<Plus />} />
+          <Tool label="Delete table" click={() => editor.chain().focus().deleteTable().run()} icon={<X />} />
+        </div>
+      )}
+
+      <span className="separator" />
+
+      <Tool label="Align left" active={editor.isActive({ textAlign: 'left' })} click={() => editor.chain().focus().setTextAlign('left').run()} icon={<AlignLeft />} />
+      <Tool label="Align center" active={editor.isActive({ textAlign: 'center' })} click={() => editor.chain().focus().setTextAlign('center').run()} icon={<AlignCenter />} />
+      <Tool label="Align right" active={editor.isActive({ textAlign: 'right' })} click={() => editor.chain().focus().setTextAlign('right').run()} icon={<AlignRight />} />
+
+      <span className="separator" />
+
+      <Tool label="Clear formatting" click={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} icon={<X />} />
+    </div>
+  )
+}

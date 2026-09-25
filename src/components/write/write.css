@@ -29,13 +29,6 @@
   justify-content: space-between;
 }
 
-.eyebrow {
-  font: 600 10px 'JetBrains Mono', monospace;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--mint);
-}
-
 .docs-head h1 {
   font: 600 22px Outfit, sans-serif;
   margin: 4px 0;
@@ -470,6 +463,13 @@
   font: 12px 'JetBrains Mono', monospace;
 }
 
+/* Touch screens have their own selection menu; the toolbar covers the same tools. */
+@media (pointer: coarse) {
+  .bubble {
+    display: none !important;
+  }
+}
+
 .bubble {
   display: flex;
   padding: 4px;
@@ -647,5 +647,13 @@
   }
   .doc-actions {
     opacity: 1;
+  }
+  .doc-action-btn {
+    width: 40px;
+    height: 40px;
+  }
+  .tool {
+    width: 40px;
+    height: 40px;
   }
 }

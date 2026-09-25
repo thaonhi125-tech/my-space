@@ -45,7 +45,7 @@ const extensions = [
   StarterKit,
   Underline,
   Link.configure({ openOnClick: false }),
-  Placeholder.configure({ placeholder: 'Start writing… Select text for quick tools.' }),
+  Placeholder.configure({ placeholder: 'Start writing…' }),
   TextAlign.configure({ types: ['heading', 'paragraph'] }),
   TaskList,
   TaskItem.configure({ nested: true }),
@@ -497,10 +497,7 @@ export default function WritingWorkspace() {
       {/* Sidebar / Document Library */}
       <aside className="documents" aria-label="Documents">
         <div className="docs-head">
-          <div>
-            <span className="eyebrow">Writing mode</span>
-            <h1>Documents</h1>
-          </div>
+          <h1>Documents</h1>
           <button className="icon-button" onClick={create} aria-label="New document" title="Create new document">
             <FilePlus2 size={20} />
           </button>
@@ -575,7 +572,7 @@ export default function WritingWorkspace() {
             accept=".json,.md,.markdown,.txt,.html,.htm"
             onChange={e => void importFile(e.target.files?.[0])}
           />
-          <p>Saved in this browser. Regular backups keep your thoughts safe.</p>
+          <p>Stored only in this browser. Back up now and then.</p>
         </div>
       </aside>
 

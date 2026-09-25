@@ -10,6 +10,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: '#111111',
   colorScheme: 'dark light',
+  // Lets the bottom nav sit above the iPhone home indicator (env(safe-area-inset-bottom)).
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

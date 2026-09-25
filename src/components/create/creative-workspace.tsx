@@ -134,7 +134,6 @@ export default function CreativeWorkspace() {
     const b = newBoard()
     await db.boards.add(b)
     await refresh(b.id)
-    setNotice({ text: `Created "${b.title}"` })
   }
 
   const openRenameModal = (b: LocalBoard) => {
@@ -249,10 +248,7 @@ export default function CreativeWorkspace() {
       {/* Board Panel Sidebar */}
       <aside className={`board-panel ${panel ? '' : 'closed'}`} aria-label="Boards navigation">
         <div className="board-heading">
-          <div>
-            <span className="eyebrow">Creative mode</span>
-            <h1>Boards</h1>
-          </div>
+          <h1>Boards</h1>
           <button className="icon-button" onClick={create} aria-label="New board" title="Create new board">
             <FilePlus2 size={20} />
           </button>
@@ -269,9 +265,6 @@ export default function CreativeWorkspace() {
                   onClick={() => selectBoard(b.id)}
                   aria-current={isActive ? 'true' : undefined}
                 >
-                  <span className="board-preview">
-                    {b.snapshot ? <Pencil size={18} /> : <span>+</span>}
-                  </span>
                   <span className="board-copy">
                     <strong>{b.title}</strong>
                     <small>{new Date(b.updatedAt).toLocaleDateString()}</small>
@@ -325,20 +318,6 @@ export default function CreativeWorkspace() {
           <button className="button" onClick={() => fileRef.current?.click()}>
             <Upload size={15} /> Import board
           </button>
-          <button
-            className="button"
-            onClick={() =>
-              active &&
-              download(`${active.title}.tldr.json`, {
-                format: 'my-space-board',
-                version: 1,
-                title: active.title,
-                snapshot: active.snapshot,
-              })
-            }
-          >
-            <Download size={15} /> Export JSON
-          </button>
           <input
             ref={fileRef}
             className="sr-only"
@@ -346,7 +325,7 @@ export default function CreativeWorkspace() {
             accept=".json,.tldr"
             onChange={e => void importBoard(e.target.files?.[0])}
           />
-          <p>Drawings stay on this device. Use tldraw&apos;s menu to export PNG or SVG.</p>
+          <p>Stored only in this browser. PNG and SVG export are in the canvas menu.</p>
         </div>
       </aside>
 
@@ -394,7 +373,7 @@ export default function CreativeWorkspace() {
                     snapshot: active.snapshot,
                   })
                 }
-                title="Export board snapshot (JSON)"
+                title="Export board (.json)"
                 aria-label="Export board"
               >
                 <Download size={17} />

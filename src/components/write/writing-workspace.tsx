@@ -213,6 +213,15 @@ export default function WritingWorkspace() {
     if (activeId) localStorage.setItem('my-space:last-document', activeId)
   }, [activeId])
 
+  // Shrinking to phone width turns the list into an overlay; close it so it
+  // doesn't suddenly cover the editor.
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 700px)')
+    const onChange = () => query.matches && setSidebar(false)
+    query.addEventListener('change', onChange)
+    return () => query.removeEventListener('change', onChange)
+  }, [])
+
   useEffect(() => {
     if (!focusTitleNext.current || !editor) return
     focusTitleNext.current = false

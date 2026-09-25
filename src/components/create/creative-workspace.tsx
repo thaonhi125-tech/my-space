@@ -130,6 +130,15 @@ export default function CreativeWorkspace() {
     }
   }, [activeId])
 
+  // Shrinking to phone width (rotation, split screen) turns the list into an
+  // overlay; close it so it doesn't suddenly cover the canvas.
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 700px)')
+    const onChange = () => query.matches && setPanel(false)
+    query.addEventListener('change', onChange)
+    return () => query.removeEventListener('change', onChange)
+  }, [])
+
   const create = async () => {
     await autosave.flush()
     const b = newBoard()

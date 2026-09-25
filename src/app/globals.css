@@ -623,8 +623,7 @@ a {
     box-shadow: var(--shadow);
     gap: 4px;
   }
-  .mobile-nav .nav-link,
-  .mobile-nav .mobile-theme-btn {
+  .mobile-nav .nav-link {
     flex: 1;
     flex-direction: column;
     gap: 3px;
@@ -653,8 +652,7 @@ a {
   .mobile-nav .nav-label {
     font-size: 11px;
   }
-  .mobile-nav .nav-link svg,
-  .mobile-nav .mobile-theme-btn svg {
+  .mobile-nav .nav-link svg {
     width: 20px;
     height: 20px;
   }
@@ -695,4 +693,41 @@ a {
   gap: 10px;
   line-height: 1.5;
   color: var(--text);
+}
+
+/* One-time "use as an app" card, phones only, just above the bottom bar. */
+.install-card {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .install-card {
+    position: fixed;
+    z-index: 55;
+    left: 8px;
+    right: 8px;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 6px 8px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .install-card > span {
+    flex: 1;
+  }
+  .install-card .button {
+    min-height: 36px;
+  }
+  .install-card .icon-button {
+    width: 36px;
+    min-width: 36px;
+    min-height: 36px;
+  }
 }

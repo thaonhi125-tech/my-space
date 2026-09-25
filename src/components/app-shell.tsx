@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { InstallApp } from './install-app'
+import { InstallApp, InstallCard } from './install-app'
 import { useTheme } from './theme-context'
 
 const WorkWorkspace = dynamic(() => import('./work/work-workspace'))
@@ -106,14 +106,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
+      {/* Phones: modes only. Theme follows the phone's setting; install is a one-time card. */}
       <nav className="mobile-nav" aria-label="Workspace navigation">
         {navLinks}
-        <button className="icon-button mobile-theme-btn" onClick={toggleTheme} title={`Switch to ${themeLabel}`} aria-label={`Switch to ${themeLabel}`}>
-          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-          <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
-        </button>
-        <InstallApp className="icon-button mobile-theme-btn" compactLabel />
       </nav>
+      <InstallCard />
 
       <main className="workspace">
         {children}

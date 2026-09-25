@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { db, exportBackup, importBackup, isQuotaError, parseBackup } from '@/lib/db'
+import { useAutosave } from '@/lib/use-autosave'
 import { EMPTY_CONTENT, newDocument, type LocalDocument, type SaveState } from '@/lib/models'
 import './write.css'
 
@@ -73,9 +74,36 @@ export default function WritingWorkspace() {
   // Delete modal state
   const [docToDelete, setDocToDelete] = useState<LocalDocument | null>(null)
 
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Bumped when the active document is replaced from outside the editor (e.g. backup import).
+  const [contentVersion, setContentVersion] = useState(0)
+
   const fileRef = useRef<HTMLInputElement>(null)
+  const titleRef = useRef<HTMLInputElement>(null)
+  const focusTitleNext = useRef(false)
   const active = docs.find(d => d.id === activeId)
+
+  const autosave = useAutosave<Partial<Pick<LocalDocument, 'title' | 'content'>>>({
+    delay: 650,
+    write: async (id, patch) => {
+      const title = patch.title === undefined ? {} : { title: patch.title.trim() || 'Untitled document' }
+      await db.documents.update(id, { ...patch, ...title, updatedAt: new Date().toISOString() })
+    },
+    onSaving: () => setSave('saving'),
+    onSaved: id => {
+      const updatedAt = new Date().toISOString()
+      setDocs(old => old.map(d => (d.id === id ? { ...d, updatedAt } : d)))
+      setSave('saved')
+    },
+    onError: err => {
+      setSave('error')
+      setNotice({
+        text: isQuotaError(err)
+          ? 'Browser storage is full. Export a backup now; your open work remains available.'
+          : 'Save failed. Export your work before closing this tab.',
+        error: true,
+      })
+    },
+  })
 
   const refresh = useCallback(async (id?: string) => {
     const all = await db.documents.orderBy('updatedAt').reverse().toArray()
@@ -97,7 +125,8 @@ export default function WritingWorkspace() {
       try {
         let all = await db.documents.toArray()
         if (!all.length) {
-          const first = newDocument('Welcome to My Space')
+          // Fixed id + put: seeding twice (StrictMode, two tabs) can't create duplicates.
+          const first = { ...newDocument('Welcome to My Space'), id: 'welcome' }
           first.content = {
             type: 'doc',
             content: [
@@ -112,7 +141,7 @@ export default function WritingWorkspace() {
               },
             ],
           }
-          await db.documents.add(first)
+          await db.documents.put(first)
           all = [first]
         }
         await refresh()
@@ -150,39 +179,31 @@ export default function WritingWorkspace() {
         if (!activeId) return
         const content = e.getJSON()
         setDocs(old => old.map(d => (d.id === activeId ? { ...d, content } : d)))
-        setSave('saving')
-        if (saveTimer.current) clearTimeout(saveTimer.current)
-        saveTimer.current = setTimeout(async () => {
-          try {
-            const updatedAt = new Date().toISOString()
-            await db.documents.update(activeId, { content, updatedAt })
-            setDocs(old => old.map(d => (d.id === activeId ? { ...d, updatedAt } : d)))
-            setSave('saved')
-          } catch (err) {
-            setSave('error')
-            setNotice({
-              text: isQuotaError(err)
-                ? 'Browser storage is full. Export a backup now; your open work remains available.'
-                : 'Save failed. Export your work before closing this tab.',
-              error: true,
-            })
-          }
-        }, 650)
+        autosave.queue(activeId, { content })
       },
     },
-    [activeId]
+    // One editor per document: it is created with that document's content and
+    // its own undo history. Never push state back into a live editor on every
+    // keystroke — that resets the cursor and wipes undo.
+    [activeId, contentVersion]
   )
 
   useEffect(() => {
-    if (active && editor && !editor.isDestroyed) {
-      editor.commands.setContent(active.content, false)
-      localStorage.setItem('my-space:last-document', active.id)
-    }
-  }, [activeId, active, editor])
+    if (activeId) localStorage.setItem('my-space:last-document', activeId)
+  }, [activeId])
 
-  useEffect(() => () => {
-    if (saveTimer.current) clearTimeout(saveTimer.current)
-  }, [])
+  useEffect(() => {
+    if (!focusTitleNext.current || !editor) return
+    focusTitleNext.current = false
+    titleRef.current?.focus()
+    titleRef.current?.select()
+  }, [editor])
+
+  const selectDocument = (id: string) => {
+    if (id === activeId) return
+    void autosave.flush()
+    setActiveId(id)
+  }
 
   // Link Dialog open helper
   const openLinkDialog = useCallback(() => {
@@ -218,31 +239,22 @@ export default function WritingWorkspace() {
   }, [focus, findOpen, linkOpen, docToDelete, openLinkDialog])
 
   const create = async () => {
+    await autosave.flush()
     const d = newDocument()
     await db.documents.add(d)
+    setQuery('')
+    focusTitleNext.current = true
     await refresh(d.id)
-    requestAnimationFrame(() => editor?.commands.focus())
   }
 
   const updateTitle = (title: string) => {
     if (!active) return
     setDocs(v => v.map(d => (d.id === active.id ? { ...d, title } : d)))
-    setSave('saving')
-    if (saveTimer.current) clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(async () => {
-      try {
-        await db.documents.update(active.id, {
-          title: title || 'Untitled document',
-          updatedAt: new Date().toISOString(),
-        })
-        setSave('saved')
-      } catch {
-        setSave('error')
-      }
-    }, 500)
+    autosave.queue(active.id, { title })
   }
 
   const duplicate = async (d: LocalDocument) => {
+    await autosave.flush()
     const copy = {
       ...d,
       id: crypto.randomUUID(),
@@ -278,8 +290,11 @@ export default function WritingWorkspace() {
     try {
       const raw = await file.text()
       if (file.name.endsWith('.json')) {
-        await importBackup(parseBackup(JSON.parse(raw)))
+        const data = parseBackup(JSON.parse(raw))
+        await autosave.flush()
+        await importBackup(data)
         await refresh()
+        setContentVersion(v => v + 1)
         setNotice({ text: 'Backup imported successfully.' })
       } else {
         const d = newDocument(file.name.replace(/\.[^.]+$/, ''))
@@ -290,6 +305,7 @@ export default function WritingWorkspace() {
             content: p ? [{ type: 'text', text: p }] : undefined,
           })),
         }
+        await autosave.flush()
         await db.documents.add(d)
         await refresh(d.id)
         setNotice({ text: 'Document imported.' })
@@ -456,7 +472,7 @@ export default function WritingWorkspace() {
                 <button
                   type="button"
                   className="doc-select-btn"
-                  onClick={() => setActiveId(d.id)}
+                  onClick={() => selectDocument(d.id)}
                   aria-current={isActive ? 'true' : undefined}
                 >
                   <span className="doc-title">{d.title || 'Untitled document'}</span>
@@ -617,9 +633,16 @@ export default function WritingWorkspace() {
           {active ? (
             <article className="page">
               <input
+                ref={titleRef}
                 className="title-input"
                 value={active.title}
                 onChange={e => updateTitle(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    editor?.commands.focus('start')
+                  }
+                }}
                 aria-label="Document title"
                 placeholder="Untitled document"
               />

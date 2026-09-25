@@ -12,8 +12,15 @@ import Table from '@tiptap/extension-table'
 import TableRow from '@tiptap/extension-table-row'
 import TableHeader from '@tiptap/extension-table-header'
 import TableCell from '@tiptap/extension-table-cell'
+import TextStyle from '@tiptap/extension-text-style'
+import Color from '@tiptap/extension-color'
+import Highlight from '@tiptap/extension-highlight'
+import Subscript from '@tiptap/extension-subscript'
+import Superscript from '@tiptap/extension-superscript'
+import { FontSize } from './font-size'
+import { AlignButtons, BubbleDropdown, ColorPanel, currentBlockLabel, MoreButtons, SizeButtons, TurnInto } from './format-controls'
 import {
-  Bold, Code, Columns2, Copy, Download, Focus, Heading1, Heading2, Italic, Link2, Minimize2, PanelLeftClose,
+  Bold, Code, Columns2, Copy, Download, Focus, Italic, Link2, Minimize2, PanelLeftClose,
   PanelLeftOpen, Plus, Printer, Rows, Search, Strikethrough, Trash2, Underline as UnderlineIcon, Unlink, Upload, X,
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -64,7 +71,7 @@ const extensions = [
           ? translate("Start writing, or type '/' for blocks", undefined, getLang())
           : translate("Type '/' for blocks", undefined, getLang()),
   }),
-  TextAlign.configure({ types: ['heading', 'paragraph'] }),
+  TextAlign.configure({ types: ['heading', 'paragraph'], alignments: ['left', 'center', 'right', 'justify'] }),
   TaskList,
   TaskItem.configure({ nested: true }),
   Table.configure({ resizable: true }),
@@ -72,6 +79,12 @@ const extensions = [
   TableHeader,
   TableCell,
   ImageNode,
+  TextStyle,
+  Color,
+  Highlight.configure({ multicolor: true }),
+  FontSize,
+  Subscript,
+  Superscript,
 ]
 
 // Shortcut hint prefix; only called in client-rendered UI.
@@ -660,8 +673,9 @@ export default function WritingWorkspace() {
                       !state.selection.empty && !(state.selection instanceof NodeSelection) && !editor.isActive('codeBlock')
                     }
                   >
-                    <Tool label={t('Heading 1')} active={editor.isActive('heading', { level: 1 })} click={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} icon={<Heading1 />} />
-                    <Tool label={t('Heading 2')} active={editor.isActive('heading', { level: 2 })} click={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} icon={<Heading2 />} />
+                    <BubbleDropdown label={<span className="bubble-dd-text">{t(currentBlockLabel(editor))}</span>} title={t('Turn into')}>
+                      {close => <TurnInto editor={editor} onDone={close} />}
+                    </BubbleDropdown>
                     <span className="separator" />
                     <Tool label={t('Bold')} shortcut="B" active={editor.isActive('bold')} click={() => editor.chain().focus().toggleBold().run()} icon={<Bold />} />
                     <Tool label={t('Italic')} shortcut="I" active={editor.isActive('italic')} click={() => editor.chain().focus().toggleItalic().run()} icon={<Italic />} />
@@ -669,6 +683,29 @@ export default function WritingWorkspace() {
                     <Tool label={t('Strikethrough')} active={editor.isActive('strike')} click={() => editor.chain().focus().toggleStrike().run()} icon={<Strikethrough />} />
                     <Tool label={t('Inline code')} active={editor.isActive('code')} click={() => editor.chain().focus().toggleCode().run()} icon={<Code />} />
                     <Tool label={t('Link')} shortcut="K" active={editor.isActive('link')} click={openLinkDialog} icon={<Link2 />} />
+                    <span className="separator" />
+                    <BubbleDropdown
+                      label={
+                        <span className="bubble-color-a" style={{ color: editor.getAttributes('textStyle').color, background: editor.getAttributes('highlight').color }}>
+                          A
+                        </span>
+                      }
+                      title={t('Colour')}
+                    >
+                      {() => <ColorPanel editor={editor} />}
+                    </BubbleDropdown>
+                    <BubbleDropdown label={<span className="bubble-dd-text">Aa</span>} title={t('Text size and alignment')}>
+                      {() => (
+                        <div className="fmt-panel">
+                          <div className="fmt-label">{t('Size')}</div>
+                          <SizeButtons editor={editor} />
+                          <div className="fmt-label">{t('Alignment')}</div>
+                          <AlignButtons editor={editor} />
+                          <div className="fmt-label">{t('More')}</div>
+                          <MoreButtons editor={editor} />
+                        </div>
+                      )}
+                    </BubbleDropdown>
                   </BubbleMenu>
 
                   {/* Inside a table → row/column tools (the only place they live on desktop). */}

@@ -8,6 +8,7 @@ import {
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/lib/i18n'
+import { AlignButtons, ColorPanel, MoreButtons, SizeButtons } from './format-controls'
 
 /*
  * Phones: formatting sits right on top of the on-screen keyboard (like Notion
@@ -21,6 +22,7 @@ export function KeyboardBar({ editor, onOpenLink, onPickImage }: { editor: Edito
   const [focused, setFocused] = useState(false)
   const [bottom, setBottom] = useState(0)
   const [, rerender] = useState(0)
+  const [more, setMore] = useState(false)
   const { t } = useI18n()
 
   useEffect(() => {
@@ -57,6 +59,19 @@ export function KeyboardBar({ editor, onOpenLink, onPickImage }: { editor: Edito
 
   if (!focused) return null
 
+  const extra = more && (
+    <div className="kb-extra" onPointerDown={e => e.preventDefault()} onMouseDown={e => e.preventDefault()}>
+      <ColorPanel editor={editor} />
+      <div className="kb-extra-row">
+        <SizeButtons editor={editor} />
+      </div>
+      <div className="kb-extra-row">
+        <AlignButtons editor={editor} />
+        <MoreButtons editor={editor} />
+      </div>
+    </div>
+  )
+
   // Blocking the default of pointer/mouse down stops the button from taking
   // focus, so the caret and the keyboard stay put; the action runs on click,
   // so swiping the bar sideways doesn't trigger buttons.
@@ -81,7 +96,19 @@ export function KeyboardBar({ editor, onOpenLink, onPickImage }: { editor: Edito
 
   return createPortal(
     <div className="keyboard-bar" style={{ bottom }} role="toolbar" aria-label={t('Formatting')}>
+      {extra}
       <div className="kb-scroll">
+        <button
+          type="button"
+          className={`kb-tool kb-aa ${more ? 'active' : ''}`}
+          aria-label={t('Colour, size and alignment')}
+          aria-expanded={more}
+          onPointerDown={keepFocus}
+          onMouseDown={keepFocus}
+          onClick={() => setMore(v => !v)}
+        >
+          Aa
+        </button>
         <button type="button" className="kb-tool kb-slash" aria-label={t('Insert block')} onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={() => c().insertContent('/').run()}>
           /
         </button>

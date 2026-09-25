@@ -59,7 +59,7 @@ export default function WritingWorkspace() {
   const [sidebar, setSidebar] = useState(true)
   const [focus, setFocus] = useState(false)
   const [query, setQuery] = useState('')
-  const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null)
+  const [notice, setNotice] = useState<{ text: string; error?: boolean; offerExport?: boolean } | null>(null)
 
   // Find & Replace state
   const [findOpen, setFindOpen] = useState(false)
@@ -101,6 +101,7 @@ export default function WritingWorkspace() {
           ? 'Browser storage is full. Export a backup now; your open work remains available.'
           : 'Save failed. Export your work before closing this tab.',
         error: true,
+        offerExport: true,
       })
     },
   })
@@ -282,8 +283,13 @@ export default function WritingWorkspace() {
     setNotice({ text: `Deleted "${target.title}"` })
   }
 
-  const backup = async () =>
-    download(`my-space-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(await exportBackup(), null, 2))
+  const backup = async () => {
+    // Documents come from memory, not IndexedDB: after a failed save the
+    // on-screen text is newer than what is stored.
+    const stored = await exportBackup().catch(() => null)
+    const data = { format: 'my-space-backup' as const, version: 1 as const, exportedAt: new Date().toISOString(), documents: docs, boards: stored?.boards ?? [] }
+    download(`my-space-${data.exportedAt.slice(0, 10)}.json`, JSON.stringify(data, null, 2))
+  }
 
   const importFile = async (file?: File) => {
     if (!file) return
@@ -311,7 +317,12 @@ export default function WritingWorkspace() {
         setNotice({ text: 'Document imported.' })
       }
     } catch (err) {
-      setNotice({ text: err instanceof Error ? err.message : 'Import failed. Choose a valid file.', error: true })
+      setNotice({
+        text: err instanceof SyntaxError || !(err instanceof Error)
+          ? 'This file could not be read. Choose a My Space backup (.json) or a .md, .txt or .html file.'
+          : err.message,
+        error: true,
+      })
     } finally {
       if (fileRef.current) fileRef.current.value = ''
     }
@@ -743,7 +754,7 @@ export default function WritingWorkspace() {
           <button className="icon-button" onClick={() => setNotice(null)} aria-label="Dismiss notification">
             <X size={16} />
           </button>
-          {notice.error && (
+          {notice.offerExport && (
             <button className="button" onClick={() => void backup()}>
               Export backup now
             </button>

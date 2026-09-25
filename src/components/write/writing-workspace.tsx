@@ -298,10 +298,18 @@ export default function WritingWorkspace() {
       if (file.name.endsWith('.json')) {
         const data = parseBackup(JSON.parse(raw))
         await autosave.flush()
-        await importBackup(data)
+        const result = await importBackup(data)
         await refresh()
         setContentVersion(v => v + 1)
-        setNotice({ text: 'Backup imported successfully.' })
+        const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
+        const restored = result.added + result.updated
+        const parts = [
+          restored ? `Restored ${plural(restored, 'item')}.` : '',
+          result.keptAsCopy
+            ? `${plural(result.keptAsCopy, 'item')} had newer edits here, so the backup version was added as a “(from backup)” copy.`
+            : '',
+        ]
+        setNotice({ text: parts.filter(Boolean).join(' ') || 'The backup was empty.' })
       } else {
         const d = newDocument(file.name.replace(/\.[^.]+$/, ''))
         d.content = {

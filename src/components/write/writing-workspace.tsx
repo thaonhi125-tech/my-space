@@ -39,6 +39,9 @@ const plainText = (node: unknown): string => {
   return n.text ?? (n.content?.map(plainText).join(' ') ?? '')
 }
 
+// Shortcut hint prefix; only called in client-rendered UI.
+const mod = () => (/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+')
+
 // Below this width the document list is an overlay, not a column.
 const isNarrow = () => window.matchMedia('(max-width: 700px)').matches
 
@@ -602,7 +605,7 @@ export default function WritingWorkspace() {
               className="icon-button"
               onClick={() => setFindOpen(v => !v)}
               aria-label="Find and replace"
-              title="Find and replace (⌘F)"
+              title={`Find and replace (${mod()}F)`}
             >
               <Search size={18} />
             </button>
@@ -792,11 +795,13 @@ type Editor = ReturnType<typeof useEditor>
 
 function Tool({
   label,
+  shortcut,
   icon,
   click,
   active = false,
 }: {
   label: string
+  shortcut?: string
   icon: React.ReactNode
   click: () => void
   active?: boolean
@@ -804,7 +809,7 @@ function Tool({
   return (
     <button
       type="button"
-      title={label}
+      title={shortcut ? `${label} (${mod()}${shortcut})` : label}
       aria-label={label}
       aria-pressed={active}
       className={`tool ${active ? 'active' : ''}`}
@@ -822,8 +827,8 @@ function Toolbar({ editor, onOpenLink }: { editor: Editor; onOpenLink: () => voi
 
   return (
     <div className="editor-toolbar" role="toolbar" aria-label="Formatting tools">
-      <Tool label="Undo (⌘Z)" click={() => editor.chain().focus().undo().run()} icon={<Undo2 />} />
-      <Tool label="Redo (⌘⇧Z)" click={() => editor.chain().focus().redo().run()} icon={<Redo2 />} />
+      <Tool label="Undo" shortcut="Z" click={() => editor.chain().focus().undo().run()} icon={<Undo2 />} />
+      <Tool label="Redo" shortcut="Shift+Z" click={() => editor.chain().focus().redo().run()} icon={<Redo2 />} />
 
       <span className="separator" />
 
@@ -848,12 +853,12 @@ function Toolbar({ editor, onOpenLink }: { editor: Editor; onOpenLink: () => voi
 
       <span className="separator" />
 
-      <Tool label="Bold (⌘B)" active={editor.isActive('bold')} click={() => editor.chain().focus().toggleBold().run()} icon={<Bold />} />
-      <Tool label="Italic (⌘I)" active={editor.isActive('italic')} click={() => editor.chain().focus().toggleItalic().run()} icon={<Italic />} />
-      <Tool label="Underline (⌘U)" active={editor.isActive('underline')} click={() => editor.chain().focus().toggleUnderline().run()} icon={<UnderlineIcon />} />
+      <Tool label="Bold" shortcut="B" active={editor.isActive('bold')} click={() => editor.chain().focus().toggleBold().run()} icon={<Bold />} />
+      <Tool label="Italic" shortcut="I" active={editor.isActive('italic')} click={() => editor.chain().focus().toggleItalic().run()} icon={<Italic />} />
+      <Tool label="Underline" shortcut="U" active={editor.isActive('underline')} click={() => editor.chain().focus().toggleUnderline().run()} icon={<UnderlineIcon />} />
       <Tool label="Strikethrough" active={editor.isActive('strike')} click={() => editor.chain().focus().toggleStrike().run()} icon={<Strikethrough />} />
       <Tool label="Inline code" active={editor.isActive('code')} click={() => editor.chain().focus().toggleCode().run()} icon={<Code />} />
-      <Tool label="Link (⌘K)" active={editor.isActive('link')} click={onOpenLink} icon={<Link2 />} />
+      <Tool label="Link" shortcut="K" active={editor.isActive('link')} click={onOpenLink} icon={<Link2 />} />
 
       <span className="separator" />
 

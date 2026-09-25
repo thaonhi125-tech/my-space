@@ -4,7 +4,7 @@ import { ExternalLink, RefreshCw, TimerReset } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import './work.css'
 
-const DEFAULT_URL = 'https://tanflow.lovable.app/'
+const DEFAULT_URL = 'https://tanflow.vercel.app/'
 
 export default function WorkWorkspace() {
   const url = process.env.NEXT_PUBLIC_TANFLOW_URL || DEFAULT_URL

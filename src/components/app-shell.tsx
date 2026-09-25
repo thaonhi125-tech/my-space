@@ -1,13 +1,12 @@
 'use client'
 
-import { Brush, ChevronLeft, ChevronRight, FileText, Moon, PanelsTopLeft, Sun } from 'lucide-react'
+import { Brush, ChevronLeft, ChevronRight, FileText, PanelsTopLeft, Settings } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { InstallApp, InstallCard } from './install-app'
-import { Mascot } from './mascot'
-import { useTheme } from './theme-context'
+import { FloatingMascot, MascotLogo } from './mascot'
+import { SettingsSheet } from './settings-sheet'
 
 const WorkWorkspace = dynamic(() => import('./work/work-workspace'))
 
@@ -22,11 +21,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const [expanded, setExpanded] = useState(false)
   const [modKey, setModKey] = useState('Ctrl+')
-  const { theme, toggleTheme } = useTheme()
   const onWork = pathname === '/work'
   // TanFlow is loaded the first time Work is opened, then kept alive while
   // other modes are shown so a running timer is not reset.
   const [workOpened, setWorkOpened] = useState(onWork)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  // Shown unless turned off in Settings (read after mount: localStorage is client-only).
+  const [mascotOn, setMascotOn] = useState(false)
+
+  useEffect(() => {
+    try {
+      setMascotOn(localStorage.getItem('my-space:mascot-hidden') !== '1')
+    } catch {
+      setMascotOn(true)
+    }
+  }, [])
+
+  const changeMascot = (on: boolean) => {
+    setMascotOn(on)
+    try {
+      localStorage.setItem('my-space:mascot-hidden', on ? '0' : '1')
+    } catch {}
+  }
 
   useEffect(() => {
     localStorage.setItem('my-space:last-mode', pathname)
@@ -74,15 +90,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     )
   })
 
-  const themeLabel = theme === 'dark' ? 'Light mode' : 'Dark mode'
-
   return (
     <div className={`app-shell ${expanded ? 'rail-expanded' : ''}`}>
       <aside className={`rail ${expanded ? 'expanded' : ''}`} aria-label="Workspace navigation">
         {/* Not a link: "/" is outside this layout, so it reloaded the shell (and TanFlow). */}
         <div className="brand">
           <span className="brand-mark">
-            <Mascot />
+            <MascotLogo />
           </span>
           <span className="brand-name">My Space</span>
         </div>
@@ -90,11 +104,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <nav className="rail-nav">{navLinks}</nav>
 
         <div className="rail-footer">
-          <InstallApp className="icon-button" />
-
-          <button className="icon-button" onClick={toggleTheme} title={`Switch to ${themeLabel}`} aria-label={`Switch to ${themeLabel}`}>
-            {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
-            <span className="footer-label">{themeLabel}</span>
+          <button className="icon-button" onClick={() => setSettingsOpen(true)} title="Settings" aria-label="Settings" aria-haspopup="dialog">
+            <Settings size={19} />
+            <span className="footer-label">Settings</span>
           </button>
 
           <button
@@ -110,11 +122,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Phones: modes only. Theme follows the phone's setting; install is a one-time card. */}
+      {/* Phones: the three modes, then Settings (theme, install, mascot) — kept apart from the modes. */}
       <nav className="mobile-nav" aria-label="Workspace navigation">
         {navLinks}
+        <button type="button" className="nav-link settings-tab" onClick={() => setSettingsOpen(true)} aria-haspopup="dialog">
+          <Settings size={20} />
+          <span className="nav-label">Settings</span>
+        </button>
       </nav>
-      <InstallCard />
+      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} mascotOn={mascotOn} onMascotChange={changeMascot} />
+      {mascotOn && <FloatingMascot />}
 
       <main className="workspace">
         {children}

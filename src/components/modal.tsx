@@ -11,7 +11,18 @@ const FOCUSABLE = 'input, button, select, textarea, a[href], [tabindex]:not([tab
  * (to [data-autofocus] or the first control) and returns to where it was, and
  * Tab stays inside while it is open.
  */
-export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+export function Modal({
+  title,
+  onClose,
+  children,
+  sheet = false,
+}: {
+  title: string
+  onClose: () => void
+  children: React.ReactNode
+  /** On phones, slide up from the bottom like a native sheet. */
+  sheet?: boolean
+}) {
   const titleId = useId()
   const dialog = useRef<HTMLDivElement>(null)
 
@@ -47,7 +58,7 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   // Portalled to <body>: parents with backdrop-filter (the bottom bar, the
   // workspace) would otherwise trap the fixed overlay inside themselves.
   return createPortal(
-    <div className="modal-overlay" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+    <div className={`modal-overlay ${sheet ? 'sheet' : ''}`} onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div ref={dialog} className="modal-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} onKeyDown={onKeyDown}>
         <div className="modal-header">
           <h3 id={titleId}>{title}</h3>

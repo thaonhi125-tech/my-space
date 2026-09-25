@@ -1,14 +1,11 @@
 'use client'
 
-import { MonitorDown, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { isIos, usePwaInstall } from '@/lib/use-pwa-install'
 import { Modal } from './modal'
 
-const DISMISSED_KEY = 'my-space:install-card-dismissed'
-
 /** Browser install dialog when available, otherwise a short how-to. */
-function useInstallFlow() {
+export function useInstallFlow() {
   const { canPrompt, installed, install } = usePwaInstall()
   const [guide, setGuide] = useState(false)
 
@@ -53,70 +50,4 @@ function useInstallFlow() {
   )
 
   return { installed, start, guideModal }
-}
-
-/** Desktop: a quiet entry in the rail footer, next to the theme switch. */
-export function InstallApp({ className }: { className: string }) {
-  const { installed, start, guideModal } = useInstallFlow()
-  if (installed) return null
-  return (
-    <>
-      <button type="button" className={className} onClick={() => void start()} title="Install My Space as an app" aria-label="Install My Space as an app">
-        <MonitorDown size={19} />
-        <span className="footer-label">Install app</span>
-      </button>
-      {guideModal}
-    </>
-  )
-}
-
-/**
- * Phones: a one-time card above the bottom bar instead of a nav item (which
- * read like a fourth mode). Gone for good after Install or Not now.
- */
-export function InstallCard() {
-  const { installed, start, guideModal } = useInstallFlow()
-  const [dismissed, setDismissed] = useState(true)
-
-  useEffect(() => {
-    try {
-      setDismissed(localStorage.getItem(DISMISSED_KEY) === '1')
-    } catch {
-      setDismissed(false)
-    }
-  }, [])
-
-  const dismiss = () => {
-    setDismissed(true)
-    try {
-      localStorage.setItem(DISMISSED_KEY, '1')
-    } catch {}
-  }
-
-  if (installed) return null
-
-  return (
-    <>
-      {!dismissed && (
-        <div className="install-card" role="region" aria-label="Install My Space">
-          <MonitorDown size={18} />
-          <span>Use My Space as an app</span>
-          <button
-            type="button"
-            className="button primary"
-            onClick={() => {
-              dismiss()
-              void start()
-            }}
-          >
-            Install
-          </button>
-          <button type="button" className="icon-button" onClick={dismiss} aria-label="Not now">
-            <X size={16} />
-          </button>
-        </div>
-      )}
-      {guideModal}
-    </>
-  )
 }

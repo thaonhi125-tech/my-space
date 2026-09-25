@@ -538,7 +538,8 @@
 }
 
 .writing.focus {
-  grid-template-columns: 0 1fr;
+  /* The sidebar is display:none here, so the writer must own the only column. */
+  grid-template-columns: 1fr;
 }
 
 .writing.focus .documents,

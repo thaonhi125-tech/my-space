@@ -134,6 +134,13 @@ a {
   align-items: stretch;
 }
 
+@media (min-width: 701px) {
+  /* Make room for the expanded rail instead of covering the workspace. */
+  .app-shell.rail-expanded {
+    padding-left: 196px;
+  }
+}
+
 .brand {
   height: 48px;
   display: flex;
@@ -228,6 +235,7 @@ a {
 
 .rail.expanded .rail-footer .footer-label {
   display: inline;
+  white-space: nowrap;
 }
 
 .rail:not(.expanded) .rail-footer .footer-label {
@@ -244,6 +252,39 @@ a {
   overflow: hidden;
   box-shadow: var(--shadow);
   transition: border-color 0.25s ease, background-color 0.25s ease;
+}
+
+.workspace .center-state {
+  height: 100%;
+}
+
+.work-host {
+  height: 100%;
+}
+
+.work-host[hidden] {
+  display: none;
+}
+
+/* Write's focus mode hides all app chrome, not only the editor chrome. */
+.app-shell:has(.writing.focus) {
+  padding: 0;
+}
+
+.app-shell:has(.writing.focus) .rail,
+.app-shell:has(.writing.focus) .mobile-nav {
+  display: none;
+}
+
+.app-shell:has(.writing.focus) .workspace {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* tldraw manages its own focus; the global ring would outline the whole canvas. */
+.tl-container:focus-visible {
+  outline: none;
 }
 
 .center-state {

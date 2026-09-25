@@ -174,7 +174,10 @@ export function FloatingMascot() {
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (!pos) return
-    e.currentTarget.setPointerCapture(e.pointerId)
+    try {
+      // Keep receiving moves when a fast finger/mouse leaves the mascot.
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {}
     drag.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y, startX: e.clientX, startY: e.clientY, lastX: e.clientX, moved: false }
     lastActivity.current = Date.now()
   }

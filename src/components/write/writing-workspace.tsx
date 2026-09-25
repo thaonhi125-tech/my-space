@@ -1,6 +1,6 @@
 'use client'
 
-import { BubbleMenu, EditorContent, useEditor } from '@tiptap/react'
+import { BubbleMenu, EditorContent, generateJSON, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import Link from '@tiptap/extension-link'
@@ -22,6 +22,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { db, exportBackup, importBackup, isQuotaError, parseBackup } from '@/lib/db'
 import { useAutosave } from '@/lib/use-autosave'
+import { markdownToHtml, toMarkdown } from '@/lib/markdown'
 import { Modal } from '../modal'
 import { EMPTY_CONTENT, newDocument, type LocalDocument, type SaveState } from '@/lib/models'
 import './write.css'
@@ -39,6 +40,20 @@ const plainText = (node: unknown): string => {
   const n = node as { text?: string; content?: unknown[] }
   return n.text ?? (n.content?.map(plainText).join(' ') ?? '')
 }
+
+const extensions = [
+  StarterKit,
+  Underline,
+  Link.configure({ openOnClick: false }),
+  Placeholder.configure({ placeholder: 'Start writing… Select text for quick tools.' }),
+  TextAlign.configure({ types: ['heading', 'paragraph'] }),
+  TaskList,
+  TaskItem.configure({ nested: true }),
+  Table.configure({ resizable: true }),
+  TableRow,
+  TableHeader,
+  TableCell,
+]
 
 // Shortcut hint prefix; only called in client-rendered UI.
 const mod = () => (/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+')
@@ -173,19 +188,7 @@ export default function WritingWorkspace() {
   const editor = useEditor(
     {
       immediatelyRender: false,
-      extensions: [
-        StarterKit,
-        Underline,
-        Link.configure({ openOnClick: false }),
-        Placeholder.configure({ placeholder: 'Start writing… Select text for quick tools.' }),
-        TextAlign.configure({ types: ['heading', 'paragraph'] }),
-        TaskList,
-        TaskItem.configure({ nested: true }),
-        Table.configure({ resizable: true }),
-        TableRow,
-        TableHeader,
-        TableCell,
-      ],
+      extensions,
       content: active?.content ?? EMPTY_CONTENT,
       editorProps: {
         attributes: { class: 'prose-editor', 'aria-label': 'Document content' },
@@ -325,12 +328,20 @@ export default function WritingWorkspace() {
         setNotice({ text: parts.filter(Boolean).join(' ') || 'The backup was empty.' })
       } else {
         const d = newDocument(file.name.replace(/\.[^.]+$/, ''))
-        d.content = {
-          type: 'doc',
-          content: raw.split(/\n{2,}/).map(p => ({
-            type: 'paragraph',
-            content: p ? [{ type: 'text', text: p }] : undefined,
-          })),
+        const ext = file.name.split('.').pop()?.toLowerCase()
+        if (ext === 'md' || ext === 'markdown') {
+          d.content = generateJSON(markdownToHtml(raw), extensions)
+        } else if (ext === 'html' || ext === 'htm') {
+          // Parsed against the editor schema: scripts, styles and unknown tags are dropped.
+          d.content = generateJSON(raw, extensions)
+        } else {
+          d.content = {
+            type: 'doc',
+            content: raw.split(/\n{2,}/).map(p => ({
+              type: 'paragraph',
+              content: p ? [{ type: 'text', text: p }] : undefined,
+            })),
+          }
         }
         await autosave.flush()
         await db.documents.add(d)
@@ -454,7 +465,7 @@ export default function WritingWorkspace() {
       download(`${safe}.txt`, editor.getText(), 'text/plain')
     }
     if (format === 'md') {
-      download(`${safe}.md`, editor.getText({ blockSeparator: '\n\n' }), 'text/markdown')
+      download(`${safe}.md`, toMarkdown(editor.getJSON()), 'text/markdown')
     }
   }
 
@@ -561,7 +572,7 @@ export default function WritingWorkspace() {
             ref={fileRef}
             className="sr-only"
             type="file"
-            accept=".json,.md,.txt,.html"
+            accept=".json,.md,.markdown,.txt,.html,.htm"
             onChange={e => void importFile(e.target.files?.[0])}
           />
           <p>Saved in this browser. Regular backups keep your thoughts safe.</p>

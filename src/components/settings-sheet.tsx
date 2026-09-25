@@ -1,11 +1,13 @@
 'use client'
 
-import { ExternalLink, MonitorDown } from 'lucide-react'
-
-export const REPO_URL = 'https://github.com/vanductan-NLT/my-space'
+import { Check, ExternalLink, MonitorDown, Pipette } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ACCENTS, applyAccent, isHex, readAccent, resolveAccent } from '@/lib/accent'
 import { useInstallFlow } from './install-app'
 import { Modal } from './modal'
 import { useTheme, type ThemeChoice } from './theme-context'
+
+export const REPO_URL = 'https://github.com/vanductan-NLT/my-space'
 
 const THEMES: { value: ThemeChoice; label: string }[] = [
   { value: 'light', label: 'Light' },
@@ -28,7 +30,15 @@ export function SettingsSheet({
   mascotOn: boolean
   onMascotChange: (on: boolean) => void
 }) {
-  const { choice, setChoice } = useTheme()
+  const { choice, setChoice, theme } = useTheme()
+  const [accent, setAccent] = useState('mint')
+  useEffect(() => setAccent(readAccent()), [open])
+
+  const pickAccent = (value: string) => {
+    setAccent(value)
+    applyAccent(value)
+  }
+
   const { installed, start, guideModal } = useInstallFlow()
 
   return (
@@ -43,6 +53,40 @@ export function SettingsSheet({
                   {t.label}
                 </button>
               ))}
+            </div>
+          </section>
+
+          <section className="settings-group" aria-labelledby="settings-accent">
+            <h4 id="settings-accent">Accent colour</h4>
+            <div className="swatches" role="group" aria-labelledby="settings-accent">
+              {ACCENTS.map(a => (
+                <button
+                  key={a.id}
+                  type="button"
+                  className="swatch"
+                  style={{ background: theme === 'dark' ? a.dark : a.light }}
+                  aria-label={a.name}
+                  title={a.name}
+                  aria-pressed={accent === a.id}
+                  onClick={() => pickAccent(a.id)}
+                >
+                  {accent === a.id && <Check size={16} />}
+                </button>
+              ))}
+              <label
+                className="swatch custom"
+                title="Any colour"
+                style={isHex(accent) ? { background: resolveAccent(accent)[theme] } : undefined}
+                data-selected={isHex(accent) || undefined}
+              >
+                {isHex(accent) ? <Check size={16} /> : <Pipette size={16} />}
+                <input
+                  type="color"
+                  aria-label="Pick any colour"
+                  value={isHex(accent) ? accent : '#99e5b7'}
+                  onChange={e => pickAccent(e.target.value)}
+                />
+              </label>
             </div>
           </section>
 

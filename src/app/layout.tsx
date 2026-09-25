@@ -15,14 +15,23 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 }
 
-// Runs before React: applies the saved theme before first paint (no flash of
-// the wrong theme) and keeps the browser's install prompt if it fires early.
+// Runs before React: applies the saved theme and accent colour before first
+// paint (no flash) and keeps the browser's install prompt if it fires early.
 const bootScript = `
 try {
   var t = localStorage.getItem('my-space:theme');
   if (t !== 'dark' && t !== 'light') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   document.documentElement.setAttribute('data-theme', t);
   document.documentElement.style.colorScheme = t;
+} catch (e) {}
+try {
+  var accent = localStorage.getItem('my-space:accent-css');
+  if (accent) {
+    var tag = document.createElement('style');
+    tag.id = 'accent-style';
+    tag.textContent = accent;
+    document.head.appendChild(tag);
+  }
 } catch (e) {}
 window.addEventListener('beforeinstallprompt', function (e) {
   e.preventDefault();

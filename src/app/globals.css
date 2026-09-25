@@ -981,3 +981,53 @@ a.settings-row {
   from { transform: translateY(24px); opacity: 0; }
   to { transform: none; opacity: 1; }
 }
+
+/* Accent colour swatches */
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 8px;
+}
+
+.swatch {
+  position: relative;
+  aspect-ratio: 1;
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  color: var(--mint-contrast);
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  transition: transform 0.12s ease;
+}
+
+.swatch:hover {
+  transform: scale(1.08);
+}
+
+.swatch[aria-pressed='true'],
+.swatch[data-selected] {
+  border-color: var(--text);
+}
+
+.swatch.custom {
+  background: conic-gradient(#ff7a7a, #ffd36e, #8be58b, #7ad3ff, #b18cff, #ff7ad9, #ff7a7a);
+  color: #1a1a1a;
+}
+
+.swatch.custom input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+@media (max-width: 420px) {
+  .swatches {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}

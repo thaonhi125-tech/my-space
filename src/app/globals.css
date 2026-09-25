@@ -1031,3 +1031,91 @@ a.settings-row {
     grid-template-columns: repeat(5, 1fr);
   }
 }
+
+.settings-sub {
+  display: grid;
+  gap: 6px;
+  padding: 2px 2px 6px;
+}
+
+.settings-sub > span {
+  font-size: 12px;
+  color: var(--secondary);
+}
+
+/* Mascot: typing, excited, speech bubble */
+.mascot-sparkle {
+  fill: var(--mint);
+}
+
+.mascot-typing .mascot-eye {
+  transform: scaleY(0.82);
+}
+
+.mascot-bounce.nod-a {
+  animation: mascot-nod-a 0.24s ease-out;
+}
+
+.mascot-bounce.nod-b {
+  animation: mascot-nod-b 0.24s ease-out;
+}
+
+.mascot-excited .mascot-bounce.nod-a,
+.mascot-excited .mascot-bounce.nod-b {
+  animation-duration: 0.18s;
+}
+
+.mascot-oops .mascot-bounce {
+  animation: mascot-shake 0.35s ease-in-out;
+}
+
+@keyframes mascot-nod-a {
+  40% { transform: translateY(1.2px) scale(1.03, 0.96); }
+}
+
+@keyframes mascot-nod-b {
+  40% { transform: translateY(1.2px) scale(1.03, 0.96); }
+}
+
+@keyframes mascot-shake {
+  25% { transform: translateX(-1.2px) rotate(-4deg); }
+  75% { transform: translateX(1.2px) rotate(4deg); }
+}
+
+.mascot-quote {
+  position: absolute;
+  width: max-content;
+  max-width: min(240px, 70vw);
+  padding: 9px 12px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--mint-border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+  cursor: pointer;
+  animation: quote-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mascot-quote.above {
+  bottom: calc(100% + 10px);
+}
+
+.mascot-quote.below {
+  top: calc(100% + 10px);
+}
+
+.mascot-quote.left {
+  right: 0;
+}
+
+.mascot-quote.right {
+  left: 0;
+}
+
+@keyframes quote-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}

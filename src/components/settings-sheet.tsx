@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { ACCENTS, applyAccent, isHex, readAccent, resolveAccent } from '@/lib/accent'
 import { useInstallFlow } from './install-app'
 import { Modal } from './modal'
+import { QUOTES_EVENT, QUOTES_KEY, readQuoteSetting, type QuoteSetting } from './mascot'
 import { useTheme, type ThemeChoice } from './theme-context'
 
 export const REPO_URL = 'https://github.com/vanductan-NLT/my-space'
@@ -32,7 +33,19 @@ export function SettingsSheet({
 }) {
   const { choice, setChoice, theme } = useTheme()
   const [accent, setAccent] = useState('mint')
-  useEffect(() => setAccent(readAccent()), [open])
+  const [quotes, setQuotes] = useState<QuoteSetting>('en')
+  useEffect(() => {
+    setAccent(readAccent())
+    setQuotes(readQuoteSetting())
+  }, [open])
+
+  const pickQuotes = (value: QuoteSetting) => {
+    setQuotes(value)
+    try {
+      localStorage.setItem(QUOTES_KEY, value)
+    } catch {}
+    window.dispatchEvent(new Event(QUOTES_EVENT))
+  }
 
   const pickAccent = (value: string) => {
     setAccent(value)
@@ -98,6 +111,25 @@ export function SettingsSheet({
               </span>
               <span className="switch" aria-hidden="true" />
             </button>
+
+            {mascotOn && (
+              <div className="settings-sub" role="group" aria-labelledby="settings-quotes">
+                <span id="settings-quotes">Encouragement from the mascot</span>
+                <div className="segmented">
+                  {(
+                    [
+                      ['vi', 'Tiếng Việt'],
+                      ['en', 'English'],
+                      ['off', 'Off'],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <button key={value} type="button" aria-pressed={quotes === value} onClick={() => pickQuotes(value)}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {!installed && (
               <button

@@ -2,6 +2,9 @@
   height: 100%;
   display: grid;
   grid-template-columns: 270px 1fr;
+  /* One row capped at the workspace height; otherwise long documents grow the
+     page instead of scrolling inside the editor. */
+  grid-template-rows: minmax(0, 1fr);
   transition: grid-template-columns 0.2s ease;
   position: relative;
 }
@@ -191,13 +194,24 @@
 .writer {
   height: 100%;
   min-width: 0;
-  display: grid;
-  /* Without this the widest row (the toolbar) stretches the column past the screen. */
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: 56px auto auto 1fr;
+  /* A column, not a fixed-row grid: the find bar comes and goes, and the
+     editor must always take the remaining height so it can scroll. */
+  display: flex;
+  flex-direction: column;
+}
+
+.writer > * {
+  flex: none;
+  min-width: 0;
+}
+
+.writer > .editor-scroll {
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .write-header {
+  height: 56px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -550,9 +564,6 @@
   display: none !important;
 }
 
-.writing.focus .writer {
-  grid-template-rows: 1fr;
-}
 
 .writing.focus .editor-scroll {
   padding-top: 80px;
@@ -585,8 +596,8 @@
   .writing.sidebar-hidden .documents {
     display: none;
   }
-  .writer {
-    grid-template-rows: 52px auto auto 1fr;
+  .write-header {
+    height: 52px;
   }
   .editor-scroll {
     padding: 24px 16px 90px;

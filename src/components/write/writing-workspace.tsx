@@ -23,6 +23,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { db, exportBackup, importBackup, isQuotaError, parseBackup } from '@/lib/db'
 import { useAutosave } from '@/lib/use-autosave'
 import { markdownToHtml, toMarkdown } from '@/lib/markdown'
+import { imageFileToDataUrl, isImageFile } from '@/lib/images'
+import type { EditorView } from '@tiptap/pm/view'
+import { ImageNode } from './image-node'
 import { Modal } from '../modal'
 import { SaveIndicator } from '../save-indicator'
 import { MenuButton } from '../menu-button'
@@ -56,6 +59,7 @@ const extensions = [
   TableRow,
   TableHeader,
   TableCell,
+  ImageNode,
 ]
 
 // Shortcut hint prefix; only called in client-rendered UI.
@@ -176,6 +180,20 @@ export default function WritingWorkspace() {
     })()
   }, [refresh])
 
+  const insertImages = async (view: EditorView, files: File[], at?: number) => {
+    for (const file of files) {
+      try {
+        const src = await imageFileToDataUrl(file)
+        const node = view.state.schema.nodes.image.create({ src, alt: file.name.replace(/\.[^.]+$/, '') })
+        const pos = at ?? view.state.selection.from
+        view.dispatch(at === undefined ? view.state.tr.replaceSelectionWith(node) : view.state.tr.insert(pos, node))
+        view.focus()
+      } catch (err) {
+        setNotice({ text: err instanceof Error && err.message ? err.message : 'That image could not be added.', error: true })
+      }
+    }
+  }
+
   const editor = useEditor(
     {
       immediatelyRender: false,
@@ -184,6 +202,22 @@ export default function WritingWorkspace() {
       editorProps: {
         attributes: { class: 'prose-editor', 'aria-label': 'Document content' },
         transformPastedHTML: html => html.replace(/ style="[^"]*"/gi, ''),
+        // Paste or drop images straight into the page.
+        handlePaste: (view, event) => {
+          const files = [...(event.clipboardData?.files ?? [])].filter(isImageFile)
+          if (!files.length) return false
+          event.preventDefault()
+          void insertImages(view, files)
+          return true
+        },
+        handleDrop: (view, event, _slice, moved) => {
+          const files = [...(event.dataTransfer?.files ?? [])].filter(isImageFile)
+          if (moved || !files.length) return false
+          event.preventDefault()
+          const at = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos
+          void insertImages(view, files, at)
+          return true
+        },
       },
       onUpdate: ({ editor: e }) => {
         if (!activeId) return

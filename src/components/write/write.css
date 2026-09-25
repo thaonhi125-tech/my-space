@@ -446,6 +446,21 @@
   flex: 1;
 }
 
+/* Pasted / dropped images */
+.prose-editor img.doc-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 12px 0 18px;
+  border-radius: 10px;
+  cursor: grab;
+}
+
+.prose-editor img.doc-image.ProseMirror-selectednode {
+  outline: 2px solid var(--mint);
+  outline-offset: 3px;
+}
+
 .prose-editor p.is-editor-empty:first-child::before {
   color: var(--muted);
   content: attr(data-placeholder);

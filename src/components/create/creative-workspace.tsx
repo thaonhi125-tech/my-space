@@ -61,8 +61,9 @@ export default function CreativeWorkspace() {
       try {
         let all = await db.boards.toArray()
         if (!all.length) {
-          const first = newBoard('Ideas board')
-          await db.boards.add(first)
+          // Fixed id + put: seeding twice (StrictMode, two tabs) can't create duplicates.
+          const first = { ...newBoard('Ideas board'), id: 'first-board' }
+          await db.boards.put(first)
           all = [first]
         }
         await refresh()

@@ -755,3 +755,80 @@
   background: var(--surface-hi);
   color: var(--secondary);
 }
+
+/* Voice typing */
+.icon-button.dictating {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.dictation-bar {
+  position: fixed;
+  z-index: 950;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  max-width: min(560px, calc(100vw - 24px));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-size: 13px;
+  animation: fadeIn 0.15s ease;
+}
+
+.rec-dot {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: rec-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes rec-pulse {
+  50% { opacity: 0.35; }
+}
+
+.dictation-text {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--secondary);
+}
+
+.dictation-lang,
+.dictation-stop {
+  height: 32px;
+  flex: none;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-hi);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dictation-stop {
+  color: var(--danger);
+}
+
+@media (max-width: 700px) {
+  /* Phones: top of the screen, clear of the keyboard and bottom bar. */
+  .dictation-bar {
+    top: calc(10px + env(safe-area-inset-top));
+    bottom: auto;
+  }
+}

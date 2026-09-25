@@ -27,6 +27,7 @@ import { imageFileToDataUrl, isImageFile } from '@/lib/images'
 import type { EditorView } from '@tiptap/pm/view'
 import { ImageNode } from './image-node'
 import { SlashMenu } from './slash-menu'
+import { Dictation } from './dictation'
 import { NodeSelection } from '@tiptap/pm/state'
 import { Modal } from '../modal'
 import { SaveIndicator } from '../save-indicator'
@@ -659,6 +660,8 @@ export default function WritingWorkspace() {
                 { label: 'Print or save as PDF', icon: <Printer size={15} />, onSelect: () => window.print() },
               ]}
             />
+
+            <Dictation editor={editor} onError={text => setNotice({ text, error: true })} />
 
             <button
               className="icon-button"

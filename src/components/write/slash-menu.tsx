@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 
 /*
  * Notion-style block menu: type "/" at the start of a line or after a space,
@@ -41,13 +42,15 @@ export function SlashMenu({ editor, onPickImage }: { editor: Editor; onPickImage
   const [index, setIndex] = useState(0)
   const dismissedAt = useRef<number | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const { t } = useI18n()
 
   const items: Item[] = [
     ...ITEMS,
     { title: 'Image', hint: 'Upload or paste', keywords: 'image picture photo img upload', icon: <ImageIcon size={16} />, run: () => onPickImage() },
   ]
   const q = open?.query.toLowerCase() ?? ''
-  const matches = items.filter(i => !q || i.title.toLowerCase().includes(q) || i.keywords.includes(q))
+  // Matches the English name, the translated name and the keywords.
+  const matches = items.filter(i => !q || i.title.toLowerCase().includes(q) || t(i.title).toLowerCase().includes(q) || i.keywords.includes(q))
 
   // Watch the text before the caret for "/query".
   useEffect(() => {
@@ -132,10 +135,10 @@ export function SlashMenu({ editor, onPickImage }: { editor: Editor; onPickImage
       className={`slash-menu ${open.above ? 'above' : ''}`}
       style={{ left: Math.min(open.left, window.innerWidth - 280), top: open.top }}
       role="listbox"
-      aria-label="Insert block"
+      aria-label={t('Insert block')}
       onMouseDown={e => e.preventDefault() /* keep the editor focused */}
     >
-      <div className="slash-menu-title">Blocks</div>
+      <div className="slash-menu-title">{t('Blocks')}</div>
       {matches.map((item, i) => (
         <button
           key={item.title}
@@ -148,8 +151,8 @@ export function SlashMenu({ editor, onPickImage }: { editor: Editor; onPickImage
         >
           <span className="slash-icon">{item.icon}</span>
           <span>
-            <strong>{item.title}</strong>
-            <small>{item.hint}</small>
+            <strong>{t(item.title)}</strong>
+            <small>{t(item.hint)}</small>
           </span>
         </button>
       ))}

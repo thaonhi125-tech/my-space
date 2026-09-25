@@ -1119,3 +1119,14 @@ a.settings-row {
   from { opacity: 0; transform: translateY(6px) scale(0.96); }
   to { opacity: 1; transform: none; }
 }
+
+.segmented.two {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* Avoid a flash of English labels before the chosen language is applied. */
+html:not([data-i18n]) .nav-label,
+html:not([data-i18n]) .footer-label,
+html:not([data-i18n]) .brand-name {
+  visibility: hidden;
+}

@@ -4,6 +4,7 @@ import type { Editor } from '@tiptap/react'
 import { Mic, Square } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { detectLang, useI18n } from '@/lib/i18n'
 
 /*
  * Voice → text using the browser's own speech recognition (Chrome, Edge,
@@ -39,6 +40,7 @@ export function Dictation({ editor, onError }: { editor: Editor | null; onError:
   const [lang, setLang] = useState<Lang>('en-US')
   const rec = useRef<Recognition | null>(null)
   const wanted = useRef(false)
+  const { t } = useI18n()
 
   useEffect(() => {
     setSupported(!!getRecognition())
@@ -46,7 +48,8 @@ export function Dictation({ editor, onError }: { editor: Editor | null; onError:
     try {
       saved = localStorage.getItem(LANG_KEY)
     } catch {}
-    setLang(saved === 'vi-VN' || saved === 'en-US' ? saved : navigator.language.toLowerCase().startsWith('vi') ? 'vi-VN' : 'en-US')
+    // Defaults to the interface language until switched here.
+    setLang(saved === 'vi-VN' || saved === 'en-US' ? saved : detectLang() === 'vi' ? 'vi-VN' : 'en-US')
   }, [])
 
   const stop = () => {
@@ -82,8 +85,8 @@ export function Dictation({ editor, onError }: { editor: Editor | null; onError:
       setListening(false)
       onError(
         e.error === 'not-allowed' || e.error === 'service-not-allowed'
-          ? 'Microphone access is blocked. Allow it in the browser’s site settings to dictate.'
-          : 'Voice typing stopped: the speech service is unavailable right now.'
+          ? t('Microphone access is blocked. Allow it in the browser’s site settings to dictate.')
+          : t('Voice typing stopped: the speech service is unavailable right now.')
       )
     }
     // Browsers end a session after a pause; keep going until the user stops.
@@ -102,7 +105,7 @@ export function Dictation({ editor, onError }: { editor: Editor | null; onError:
       r.start()
       setListening(true)
     } catch {
-      onError('Voice typing could not start.')
+      onError(t('Voice typing could not start.'))
     }
   }
 
@@ -129,8 +132,8 @@ export function Dictation({ editor, onError }: { editor: Editor | null; onError:
         className={`icon-button ${listening ? 'dictating' : ''}`}
         onClick={() => (listening ? stop() : start())}
         aria-pressed={listening}
-        aria-label={listening ? 'Stop voice typing' : 'Voice typing'}
-        title="Voice typing — your browser's speech service turns speech into text (online)"
+        aria-label={t(listening ? 'Stop voice typing' : 'Voice typing')}
+        title={t("Voice typing — your browser's speech service turns speech into text (online)")}
       >
         <Mic size={18} />
       </button>
@@ -139,12 +142,12 @@ export function Dictation({ editor, onError }: { editor: Editor | null; onError:
         createPortal(
           <div className="dictation-bar" role="status">
             <span className="rec-dot" aria-hidden="true" />
-            <span className="dictation-text">{interim || 'Listening…'}</span>
-            <button type="button" className="dictation-lang" onClick={switchLang} title="Switch language">
+            <span className="dictation-text">{interim || t('Listening…')}</span>
+            <button type="button" className="dictation-lang" onClick={switchLang} title={t('Switch language')}>
               {lang === 'vi-VN' ? 'VI' : 'EN'}
             </button>
-            <button type="button" className="dictation-stop" onClick={stop} aria-label="Stop voice typing">
-              <Square size={12} fill="currentColor" /> Stop
+            <button type="button" className="dictation-stop" onClick={stop} aria-label={t('Stop voice typing')}>
+              <Square size={12} fill="currentColor" /> {t('Stop')}
             </button>
           </div>,
           document.body

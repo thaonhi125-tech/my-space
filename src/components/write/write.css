@@ -488,36 +488,9 @@
   gap: 2px;
 }
 
-.find-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-  flex-wrap: wrap;
-  animation: slideInDown 0.15s ease;
-}
 
-.find-bar .input {
-  min-height: 36px;
-  height: 36px;
-  flex: 1;
-  min-width: 150px;
-}
 
-.find-bar .button {
-  min-height: 36px;
-  height: 36px;
-  white-space: nowrap;
-}
 
-.find-status {
-  font-size: 12px;
-  color: var(--secondary);
-  padding: 0 6px;
-  white-space: nowrap;
-}
 
 @keyframes slideInDown {
   from { opacity: 0; transform: translateY(-8px); }

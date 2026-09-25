@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { ThemeProvider } from '@/components/theme-context'
+import { I18nProvider } from '@/lib/i18n'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -23,6 +24,8 @@ try {
   if (t !== 'dark' && t !== 'light') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   document.documentElement.setAttribute('data-theme', t);
   document.documentElement.style.colorScheme = t;
+  var l = localStorage.getItem('my-space:lang');
+  document.documentElement.lang = l === 'vi' || l === 'en' ? l : (navigator.language || '').toLowerCase().indexOf('vi') === 0 ? 'vi' : 'en';
 } catch (e) {}
 try {
   var accent = localStorage.getItem('my-space:accent-css');
@@ -49,7 +52,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body suppressHydrationWarning>
         <ThemeProvider>
-          {children}
+          <I18nProvider>{children}</I18nProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '@/lib/i18n'
 
 /*
  * Phones: formatting sits right on top of the on-screen keyboard (like Notion
@@ -20,6 +21,7 @@ export function KeyboardBar({ editor, onOpenLink, onPickImage }: { editor: Edito
   const [focused, setFocused] = useState(false)
   const [bottom, setBottom] = useState(0)
   const [, rerender] = useState(0)
+  const { t } = useI18n()
 
   useEffect(() => {
     if (!isTouch()) return
@@ -65,7 +67,7 @@ export function KeyboardBar({ editor, onOpenLink, onPickImage }: { editor: Edito
       key={label}
       type="button"
       className={`kb-tool ${active ? 'active' : ''}`}
-      aria-label={label}
+      aria-label={t(label)}
       aria-pressed={active}
       onPointerDown={keepFocus}
       onMouseDown={keepFocus}
@@ -78,9 +80,9 @@ export function KeyboardBar({ editor, onOpenLink, onPickImage }: { editor: Edito
   const c = () => editor.chain().focus()
 
   return createPortal(
-    <div className="keyboard-bar" style={{ bottom }} role="toolbar" aria-label="Formatting">
+    <div className="keyboard-bar" style={{ bottom }} role="toolbar" aria-label={t('Formatting')}>
       <div className="kb-scroll">
-        <button type="button" className="kb-tool kb-slash" aria-label="Insert block" onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={() => c().insertContent('/').run()}>
+        <button type="button" className="kb-tool kb-slash" aria-label={t('Insert block')} onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={() => c().insertContent('/').run()}>
           /
         </button>
         {tool('Bold', <Bold size={18} />, () => c().toggleBold().run(), editor.isActive('bold'))}

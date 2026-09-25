@@ -3,6 +3,7 @@
 import { Check, ExternalLink, MonitorDown, Pipette } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { ACCENTS, applyAccent, isHex, readAccent, resolveAccent } from '@/lib/accent'
+import { useI18n, type Lang } from '@/lib/i18n'
 import { useInstallFlow } from './install-app'
 import { Modal } from './modal'
 import { QUOTES_EVENT, QUOTES_KEY, readQuoteSetting, type QuoteSetting } from './mascot'
@@ -16,9 +17,15 @@ const THEMES: { value: ThemeChoice; label: string }[] = [
   { value: 'system', label: 'Match device' },
 ]
 
+// Each language names itself, so it can be found whatever is selected.
+const LANGS: { value: Lang; label: string }[] = [
+  { value: 'vi', label: 'Tiếng Việt' },
+  { value: 'en', label: 'English' },
+]
+
 /**
- * Phone settings, opened from the Settings tab: things that are not modes and
- * so don't belong in the bottom bar.
+ * Settings (rail footer on desktop, Settings tab on phones): everything that
+ * isn't a mode — language, appearance, mascot, install.
  */
 export function SettingsSheet({
   open,
@@ -32,8 +39,9 @@ export function SettingsSheet({
   onMascotChange: (on: boolean) => void
 }) {
   const { choice, setChoice, theme } = useTheme()
+  const { lang, setLang, t } = useI18n()
   const [accent, setAccent] = useState('mint')
-  const [quotes, setQuotes] = useState<QuoteSetting>('en')
+  const [quotes, setQuotes] = useState<QuoteSetting>('on')
   useEffect(() => {
     setAccent(readAccent())
     setQuotes(readQuoteSetting())
@@ -57,20 +65,31 @@ export function SettingsSheet({
   return (
     <>
       {open && (
-        <Modal title="Settings" onClose={onClose} sheet>
+        <Modal title={t('Settings')} onClose={onClose} sheet>
+          <section className="settings-group" aria-labelledby="settings-language">
+            <h4 id="settings-language">{t('Language')}</h4>
+            <div className="segmented two" role="group" aria-labelledby="settings-language">
+              {LANGS.map(l => (
+                <button key={l.value} type="button" lang={l.value} aria-pressed={lang === l.value} onClick={() => setLang(l.value)} data-autofocus={lang === l.value || undefined}>
+                  {l.label}
+                </button>
+              ))}
+            </div>
+          </section>
+
           <section className="settings-group" aria-labelledby="settings-appearance">
-            <h4 id="settings-appearance">Appearance</h4>
+            <h4 id="settings-appearance">{t('Appearance')}</h4>
             <div className="segmented" role="group" aria-labelledby="settings-appearance">
-              {THEMES.map(t => (
-                <button key={t.value} type="button" aria-pressed={choice === t.value} onClick={() => setChoice(t.value)} data-autofocus={choice === t.value || undefined}>
-                  {t.label}
+              {THEMES.map(th => (
+                <button key={th.value} type="button" aria-pressed={choice === th.value} onClick={() => setChoice(th.value)}>
+                  {t(th.label)}
                 </button>
               ))}
             </div>
           </section>
 
           <section className="settings-group" aria-labelledby="settings-accent">
-            <h4 id="settings-accent">Accent colour</h4>
+            <h4 id="settings-accent">{t('Accent colour')}</h4>
             <div className="swatches" role="group" aria-labelledby="settings-accent">
               {ACCENTS.map(a => (
                 <button
@@ -78,8 +97,8 @@ export function SettingsSheet({
                   type="button"
                   className="swatch"
                   style={{ background: theme === 'dark' ? a.dark : a.light }}
-                  aria-label={a.name}
-                  title={a.name}
+                  aria-label={t(a.name)}
+                  title={t(a.name)}
                   aria-pressed={accent === a.id}
                   onClick={() => pickAccent(a.id)}
                 >
@@ -88,14 +107,14 @@ export function SettingsSheet({
               ))}
               <label
                 className="swatch custom"
-                title="Any colour"
+                title={t('Any colour')}
                 style={isHex(accent) ? { background: resolveAccent(accent)[theme] } : undefined}
                 data-selected={isHex(accent) || undefined}
               >
                 {isHex(accent) ? <Check size={16} /> : <Pipette size={16} />}
                 <input
                   type="color"
-                  aria-label="Pick any colour"
+                  aria-label={t('Pick any colour')}
                   value={isHex(accent) ? accent : '#99e5b7'}
                   onChange={e => pickAccent(e.target.value)}
                 />
@@ -106,29 +125,20 @@ export function SettingsSheet({
           <section className="settings-group">
             <button type="button" className="settings-row" role="switch" aria-checked={mascotOn} onClick={() => onMascotChange(!mascotOn)}>
               <span>
-                <strong>Mascot</strong>
-                <small>The little friend in the corner</small>
+                <strong>{t('Mascot')}</strong>
+                <small>{t('The little friend in the corner')}</small>
               </span>
               <span className="switch" aria-hidden="true" />
             </button>
 
             {mascotOn && (
-              <div className="settings-sub" role="group" aria-labelledby="settings-quotes">
-                <span id="settings-quotes">Encouragement from the mascot</span>
-                <div className="segmented">
-                  {(
-                    [
-                      ['vi', 'Tiếng Việt'],
-                      ['en', 'English'],
-                      ['off', 'Off'],
-                    ] as const
-                  ).map(([value, label]) => (
-                    <button key={value} type="button" aria-pressed={quotes === value} onClick={() => pickQuotes(value)}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <button type="button" className="settings-row" role="switch" aria-checked={quotes === 'on'} onClick={() => pickQuotes(quotes === 'on' ? 'off' : 'on')}>
+                <span>
+                  <strong>{t('Encouragement from the mascot')}</strong>
+                  <small>{lang === 'vi' ? 'Tiếng Việt' : 'English'}</small>
+                </span>
+                <span className="switch" aria-hidden="true" />
+              </button>
             )}
 
             {!installed && (
@@ -141,8 +151,8 @@ export function SettingsSheet({
                 }}
               >
                 <span>
-                  <strong>Install app</strong>
-                  <small>Open My Space from your home screen</small>
+                  <strong>{t('Install app')}</strong>
+                  <small>{t('Open My Space from your home screen')}</small>
                 </span>
                 <MonitorDown size={18} aria-hidden="true" />
               </button>
@@ -150,8 +160,8 @@ export function SettingsSheet({
 
             <a className="settings-row" href={REPO_URL} target="_blank" rel="noopener noreferrer">
               <span>
-                <strong>Open source</strong>
-                <small>Clone or contribute on GitHub</small>
+                <strong>{t('Open source')}</strong>
+                <small>{t('Clone or contribute on GitHub')}</small>
               </span>
               <ExternalLink size={18} aria-hidden="true" />
             </a>

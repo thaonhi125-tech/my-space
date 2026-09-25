@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { quoteBag, type QuoteLang } from '@/lib/quotes'
+import { quoteBag } from '@/lib/quotes'
+import { useI18n } from '@/lib/i18n'
 
 /*
  * My Space's mascot: a small mint blob with two eyes, after the idea of
@@ -22,17 +23,18 @@ const CHEER_EVERY_CHARS = 600
 const STORE_KEY = 'my-space:mascot'
 export const QUOTES_KEY = 'my-space:quotes'
 export const QUOTES_EVENT = 'my-space:quotes-change'
-export type QuoteSetting = QuoteLang | 'off'
+export type QuoteSetting = 'on' | 'off'
 
 const rand = (min: number, max: number) => min + Math.random() * (max - min)
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
 
+/** Quotes on/off; their language follows the interface language. */
 export function readQuoteSetting(): QuoteSetting {
   try {
-    const v = localStorage.getItem(QUOTES_KEY)
-    if (v === 'vi' || v === 'en' || v === 'off') return v
-  } catch {}
-  return navigator.language.toLowerCase().startsWith('vi') ? 'vi' : 'en'
+    return localStorage.getItem(QUOTES_KEY) === 'off' ? 'off' : 'on'
+  } catch {
+    return 'on'
+  }
 }
 
 const isEditable = (el: EventTarget | null) => {
@@ -114,6 +116,7 @@ export function FloatingMascot() {
   const [landing, setLanding] = useState(false)
   const [nod, setNod] = useState(0)
   const [quote, setQuote] = useState<string | null>(null)
+  const { lang, t } = useI18n()
   const root = useRef<HTMLDivElement>(null)
   const moodRef = useRef(mood)
   moodRef.current = mood
@@ -138,17 +141,17 @@ export function FloatingMascot() {
     setTimeout(() => setMood(m => (m === 'happy' ? 'idle' : m)), 900)
   }
 
-  // Quote language comes from Settings.
+  // On/off from Settings; the language is the interface language.
   useEffect(() => {
     const load = () => {
       const setting = readQuoteSetting()
-      quotes.current = { setting, next: setting === 'off' ? () => '' : quoteBag(setting) }
+      quotes.current = { setting, next: setting === 'off' ? () => '' : quoteBag(lang) }
       if (setting === 'off') setQuote(null)
     }
     load()
     window.addEventListener(QUOTES_EVENT, load)
     return () => window.removeEventListener(QUOTES_EVENT, load)
-  }, [])
+  }, [lang])
 
   // Place it: the saved spot (kept as a fraction of the free space, so it stays
   // in the same corner when the window changes size), else bottom-right.
@@ -368,7 +371,7 @@ export function FloatingMascot() {
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
-      title="Drag me anywhere · tap me"
+      title={t('Drag me anywhere · tap me')}
     >
       <svg className="mascot" viewBox="0 0 32 32" style={{ transform: `rotate(${tilt}deg)` }} aria-hidden="true">
         <g className={`mascot-bounce ${nod % 2 ? 'nod-a' : nod ? 'nod-b' : ''}`}>

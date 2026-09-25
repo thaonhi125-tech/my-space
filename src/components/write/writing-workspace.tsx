@@ -24,6 +24,8 @@ import { db, exportBackup, importBackup, isQuotaError, parseBackup } from '@/lib
 import { useAutosave } from '@/lib/use-autosave'
 import { markdownToHtml, toMarkdown } from '@/lib/markdown'
 import { Modal } from '../modal'
+import { SaveIndicator } from '../save-indicator'
+import { MenuButton } from '../menu-button'
 import { EMPTY_CONTENT, newDocument, type LocalDocument, type SaveState } from '@/lib/models'
 import './write.css'
 
@@ -590,30 +592,20 @@ export default function WritingWorkspace() {
             {sidebar ? <ChevronLeft size={19} /> : <ChevronRight size={19} />}
           </button>
 
-          <div className="save-state" data-state={save}>
-            <span className="dot" />
-            {save === 'saving' ? 'Saving…' : save === 'error' ? 'Save failed' : 'Saved locally'}
-          </div>
+          <SaveIndicator state={save} />
 
           <div className="header-actions">
-            <label className="export-select" title="Export document">
-              <Download size={15} />
-              <select
-                aria-label="Export document format"
-                defaultValue=""
-                onChange={e => {
-                  exportActive(e.target.value)
-                  e.target.value = ''
-                }}
-              >
-                <option value="" disabled>
-                  Export…
-                </option>
-                <option value="md">Markdown (.md)</option>
-                <option value="txt">Plain text (.txt)</option>
-                <option value="html">HTML document (.html)</option>
-              </select>
-            </label>
+            <MenuButton
+              label="Export"
+              icon={<Download size={15} />}
+              items={[
+                { label: 'Markdown', hint: '.md', onSelect: () => exportActive('md') },
+                { label: 'Plain text', hint: '.txt', onSelect: () => exportActive('txt') },
+                { label: 'Web page', hint: '.html', onSelect: () => exportActive('html') },
+                'separator',
+                { label: 'Print or save as PDF', icon: <Printer size={15} />, onSelect: () => window.print() },
+              ]}
+            />
 
             <button
               className="icon-button"
@@ -622,15 +614,6 @@ export default function WritingWorkspace() {
               title={`Find and replace (${mod()}F)`}
             >
               <Search size={18} />
-            </button>
-
-            <button
-              className="icon-button print-button"
-              onClick={() => window.print()}
-              aria-label="Print or save as PDF"
-              title="Print or save as PDF"
-            >
-              <Printer size={18} />
             </button>
 
             <button

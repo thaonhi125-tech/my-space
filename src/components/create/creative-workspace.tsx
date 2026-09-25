@@ -7,6 +7,7 @@ import type { Editor } from 'tldraw'
 import { db, isQuotaError } from '@/lib/db'
 import { useAutosave } from '@/lib/use-autosave'
 import { Modal } from '../modal'
+import { SaveIndicator } from '../save-indicator'
 import { newBoard, type LocalBoard, type SaveState } from '@/lib/models'
 import { useTheme } from '../theme-context'
 import './create.css'
@@ -356,10 +357,7 @@ export default function CreativeWorkspace() {
             )}
           </div>
 
-          <div className="save-state" data-state={activeUnreadable ? 'error' : save}>
-            <span className="dot" />
-            {activeUnreadable ? 'Not saving' : save === 'saving' ? 'Saving…' : save === 'error' ? 'Save failed' : 'Saved locally'}
-          </div>
+          <SaveIndicator state={save} blocked={activeUnreadable} />
 
           <div className="canvas-header-actions">
             {active && (

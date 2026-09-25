@@ -219,34 +219,6 @@
   gap: 4px;
 }
 
-.export-select {
-  height: 38px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--secondary);
-  padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface-hi);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.export-select:hover {
-  color: var(--text);
-  border-color: var(--border-strong);
-}
-
-.export-select select {
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font-size: 12px;
-  cursor: pointer;
-  outline: none;
-}
 
 .editor-toolbar {
   min-height: 48px;
@@ -615,21 +587,17 @@
     width: 40px;
     min-width: 40px;
   }
-  .export-select {
-    padding: 0 8px;
-  }
-  .export-select > svg {
+  /* The download icon alone is clear enough on a phone. */
+  .write-header .menu-trigger-label,
+  .write-header .menu-chevron {
     display: none;
   }
-  .export-select select {
-    width: 66px;
+  .write-header .menu-trigger {
+    width: 40px;
+    padding: 0;
   }
   .write-header .save-state {
     white-space: nowrap;
-  }
-  /* Phones print through the browser's share menu; keep the header to one row. */
-  .print-button {
-    display: none;
   }
   .save-state {
     font-size: 11px;

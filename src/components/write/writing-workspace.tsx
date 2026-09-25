@@ -689,9 +689,13 @@ export default function WritingWorkspace() {
                 value={active.title}
                 onChange={e => updateTitle(e.target.value)}
                 onKeyDown={e => {
-                  if (e.key === 'Enter') {
+                  if (e.key === 'Enter' && !e.nativeEvent.isComposing && editor) {
                     e.preventDefault()
-                    editor?.commands.focus('start')
+                    // focus('start') sets the caret now but moves DOM focus in a later
+                    // animation frame; focus the view synchronously so the next
+                    // keystroke can't land in the title.
+                    editor.commands.focus('start')
+                    editor.view.focus()
                   }
                 }}
                 aria-label="Document title"

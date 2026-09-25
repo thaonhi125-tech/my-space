@@ -1,6 +1,6 @@
 'use client'
 
-import { Copy, Download, PanelLeftClose, Plus, PanelLeftOpen, Pencil, Save, Trash2, Upload, X } from 'lucide-react'
+import { Camera, Copy, Download, ImageDown, PanelLeftClose, Plus, PanelLeftOpen, Pencil, Save, Trash2, Upload, X } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Editor } from 'tldraw'
@@ -8,6 +8,7 @@ import { db, isQuotaError } from '@/lib/db'
 import { useAutosave } from '@/lib/use-autosave'
 import { Modal } from '../modal'
 import { SaveIndicator } from '../save-indicator'
+import { MenuButton } from '../menu-button'
 import { newBoard, type LocalBoard, type SaveState } from '@/lib/models'
 import { timeAgo } from '@/lib/time'
 import { useTheme } from '../theme-context'
@@ -196,6 +197,43 @@ export default function CreativeWorkspace() {
     setNotice({ text: `Deleted "${target.title}"` })
   }
 
+  // Picture of the drawing: the selection if there is one, else the whole page.
+  const capture = (mode: 'copy' | 'save') => {
+    const editor = editorRef.current
+    if (!editor || !active) return
+    const selected = editor.getSelectedShapeIds()
+    const ids = selected.length ? selected : [...editor.getCurrentPageShapeIds()]
+    if (!ids.length) {
+      setNotice({ text: 'Draw something first, then capture it.' })
+      return
+    }
+    const image = editor.toImage(ids, { format: 'png', background: true, padding: 24, scale: 2 }).then(r => r.blob)
+    const what = selected.length ? 'Selection' : 'Board'
+    if (mode === 'copy' && typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+      // Hand the clipboard a promise so Safari keeps the click's permission.
+      navigator.clipboard
+        .write([new ClipboardItem({ 'image/png': image })])
+        .then(() => setNotice({ text: `${what} copied as an image — paste it anywhere.` }))
+        .catch(() => void saveBlob(image, `Copying isn't allowed here, so the image was saved instead.`))
+      return
+    }
+    void saveBlob(image, `${what} saved as PNG.`)
+  }
+
+  const saveBlob = async (image: Promise<Blob>, message: string) => {
+    try {
+      const blob = await image
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = `${(active?.title || 'board').replace(/[^\p{L}\p{N} _-]/gu, '').trim() || 'board'}.png`
+      a.click()
+      URL.revokeObjectURL(a.href)
+      setNotice({ text: message })
+    } catch {
+      setNotice({ text: 'The image could not be created.', error: true })
+    }
+  }
+
   const boardLoadFailed = (id: string) => {
     setUnreadable(v => (v.includes(id) ? v : [...v, id]))
     setNotice({
@@ -370,6 +408,16 @@ export default function CreativeWorkspace() {
           <SaveIndicator state={save} blocked={activeUnreadable} />
 
           <div className="canvas-header-actions">
+            {active && (
+              <MenuButton
+                label="Capture"
+                icon={<Camera size={15} />}
+                items={[
+                  { label: 'Copy image', hint: 'paste anywhere', icon: <Copy size={15} />, onSelect: () => capture('copy') },
+                  { label: 'Save PNG', icon: <ImageDown size={15} />, onSelect: () => capture('save') },
+                ]}
+              />
+            )}
             {active && (
               <button
                 className="icon-button"

@@ -1,6 +1,6 @@
 'use client'
 
-import { Copy, Download, FilePlus2, Menu, Pencil, Save, Trash2, Upload, X } from 'lucide-react'
+import { Copy, Download, FilePlus2, PanelLeftClose, PanelLeftOpen, Pencil, Save, Trash2, Upload, X } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Editor } from 'tldraw'
@@ -341,7 +341,7 @@ export default function CreativeWorkspace() {
             aria-label={panel ? 'Hide boards sidebar' : 'Show boards sidebar'}
             title={panel ? 'Hide sidebar' : 'Show sidebar'}
           >
-            <Menu size={18} />
+            {panel ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
           </button>
 
           <div className="header-title-wrap">

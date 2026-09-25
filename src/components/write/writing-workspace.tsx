@@ -13,7 +13,7 @@ import TableRow from '@tiptap/extension-table-row'
 import TableHeader from '@tiptap/extension-table-header'
 import TableCell from '@tiptap/extension-table-cell'
 import {
-  AlignCenter, AlignLeft, AlignRight, Bold, Check, ChevronLeft, ChevronRight,
+  AlignCenter, AlignLeft, AlignRight, Bold, Check, PanelLeftClose, PanelLeftOpen,
   Code, Copy, Download, FilePlus2, Focus, Heading1, Heading2, Heading3,
   Italic, Link2, List, ListOrdered, Minimize2, Plus, Printer,
   Quote, Redo2, Rows, Search, Strikethrough, Table2, Trash2,
@@ -589,7 +589,7 @@ export default function WritingWorkspace() {
             aria-label={sidebar ? 'Hide documents sidebar' : 'Show documents sidebar'}
             title={sidebar ? 'Hide sidebar' : 'Show sidebar'}
           >
-            {sidebar ? <ChevronLeft size={19} /> : <ChevronRight size={19} />}
+            {sidebar ? <PanelLeftClose size={19} /> : <PanelLeftOpen size={19} />}
           </button>
 
           <SaveIndicator state={save} />
@@ -698,7 +698,7 @@ export default function WritingWorkspace() {
               <footer className="document-stats">
                 <span>{words} words</span>
                 <span>{chars} characters</span>
-                <span>~{Math.max(1, Math.ceil(words / 220))} min read</span>
+                {words > 0 && <span>~{Math.ceil(words / 220)} min read</span>}
               </footer>
             </article>
           ) : (

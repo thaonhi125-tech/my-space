@@ -39,6 +39,9 @@ const plainText = (node: unknown): string => {
   return n.text ?? (n.content?.map(plainText).join(' ') ?? '')
 }
 
+// Below this width the document list is an overlay, not a column.
+const isNarrow = () => window.matchMedia('(max-width: 700px)').matches
+
 const timeAgo = (iso: string) => {
   const diffMinutes = Math.max(1, Math.round((Date.now() - Date.parse(iso)) / 60000))
   if (diffMinutes < 60) {
@@ -80,6 +83,13 @@ export default function WritingWorkspace() {
   const fileRef = useRef<HTMLInputElement>(null)
   const titleRef = useRef<HTMLInputElement>(null)
   const focusTitleNext = useRef(false)
+
+  // Confirmations fade on their own; errors stay until dismissed.
+  useEffect(() => {
+    if (!notice || notice.error) return
+    const t = setTimeout(() => setNotice(null), 4000)
+    return () => clearTimeout(t)
+  }, [notice])
   const active = docs.find(d => d.id === activeId)
 
   const autosave = useAutosave<Partial<Pick<LocalDocument, 'title' | 'content'>>>({
@@ -116,6 +126,7 @@ export default function WritingWorkspace() {
   }, [])
 
   useEffect(() => {
+    if (isNarrow()) setSidebar(false)
     if (!('indexedDB' in window)) {
       setNotice({ text: 'IndexedDB is unavailable. Work cannot be saved in this browser.', error: true })
       setLoading(false)
@@ -201,6 +212,7 @@ export default function WritingWorkspace() {
   }, [editor])
 
   const selectDocument = (id: string) => {
+    if (isNarrow()) setSidebar(false)
     if (id === activeId) return
     void autosave.flush()
     setActiveId(id)
@@ -244,6 +256,7 @@ export default function WritingWorkspace() {
     const d = newDocument()
     await db.documents.add(d)
     setQuery('')
+    if (isNarrow()) setSidebar(false)
     focusTitleNext.current = true
     await refresh(d.id)
   }
@@ -546,6 +559,8 @@ export default function WritingWorkspace() {
         </div>
       </aside>
 
+      {sidebar && <button type="button" className="panel-scrim" aria-label="Close documents" onClick={() => setSidebar(false)} />}
+
       {/* Main Writer Area */}
       <section className="writer">
         <header className="write-header">
@@ -593,7 +608,7 @@ export default function WritingWorkspace() {
             </button>
 
             <button
-              className="icon-button"
+              className="icon-button print-button"
               onClick={() => window.print()}
               aria-label="Print or save as PDF"
               title="Print or save as PDF"

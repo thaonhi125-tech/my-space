@@ -78,7 +78,15 @@ export default function CreativeWorkspace() {
     },
   })
 
+  // Confirmations fade on their own; errors stay until dismissed.
+  useEffect(() => {
+    if (!notice || notice.error) return
+    const t = setTimeout(() => setNotice(null), 4000)
+    return () => clearTimeout(t)
+  }, [notice])
+
   const selectBoard = (id: string) => {
+    if (window.matchMedia('(max-width: 700px)').matches) setPanel(false)
     if (id === activeId) return
     void autosave.flush()
     setActiveId(id)
@@ -94,6 +102,8 @@ export default function CreativeWorkspace() {
   }, [])
 
   useEffect(() => {
+    // On phones the board list is an overlay; start with the canvas visible.
+    if (window.matchMedia('(max-width: 700px)').matches) setPanel(false)
     void (async () => {
       try {
         let all = await db.boards.toArray()
@@ -338,6 +348,8 @@ export default function CreativeWorkspace() {
           <p>Drawings stay on this device. Use tldraw&apos;s menu to export PNG or SVG.</p>
         </div>
       </aside>
+
+      {panel && <button type="button" className="panel-scrim" aria-label="Close boards" onClick={() => setPanel(false)} />}
 
       {/* Canvas Area */}
       <section className="canvas-area">

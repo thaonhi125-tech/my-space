@@ -25,6 +25,7 @@ import type { EditorView } from '@tiptap/pm/view'
 import { ImageNode } from './image-node'
 import { SlashMenu } from './slash-menu'
 import { Dictation } from './dictation'
+import { CaptureScreenButton } from '../screen-capture'
 import { KeyboardBar } from './keyboard-bar'
 import { NodeSelection } from '@tiptap/pm/state'
 import { Modal } from '../modal'
@@ -590,6 +591,11 @@ export default function WritingWorkspace() {
                 'separator',
                 { label: t('Print or save as PDF'), icon: <Printer size={15} />, onSelect: () => window.print() },
               ]}
+            />
+
+            <CaptureScreenButton
+              onImage={file => editor && void insertImages(editor.view, [file])}
+              onError={text => setNotice({ text, error: true })}
             />
 
             <Dictation editor={editor} onError={text => setNotice({ text, error: true })} />

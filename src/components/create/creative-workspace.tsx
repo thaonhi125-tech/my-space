@@ -1,6 +1,6 @@
 'use client'
 
-import { Camera, Copy, Download, ImageDown, PanelLeftClose, Plus, PanelLeftOpen, Pencil, Save, Trash2, Upload, X } from 'lucide-react'
+import { Aperture, Camera, Copy, Download, ImageDown, PanelLeftClose, Plus, PanelLeftOpen, Pencil, Save, Trash2, Upload, X } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Editor } from 'tldraw'
@@ -9,6 +9,9 @@ import { useAutosave } from '@/lib/use-autosave'
 import { Modal } from '../modal'
 import { SaveIndicator } from '../save-indicator'
 import { MenuButton } from '../menu-button'
+import { CaptureScreenButton } from '../screen-capture'
+import { sendImage, takeImage } from '@/lib/image-inbox'
+import { useRouter } from 'next/navigation'
 import { newBoard, type LocalBoard, type SaveState } from '@/lib/models'
 import { timeAgo } from '@/lib/time'
 import { useTheme } from '../theme-context'
@@ -35,6 +38,9 @@ const download = (name: string, value: unknown) => {
 
 export default function CreativeWorkspace() {
   const { t, lang } = useI18n()
+  const router = useRouter()
+  // An image to drop onto the board once its canvas is ready (from Frame).
+  const pendingImage = useRef<File | null>(null)
   const titleOf = (title: string) => (!title || title === 'Untitled board' || title === 'Bảng vẽ chưa đặt tên' ? t('Untitled board') : title)
   const [boards, setBoards] = useState<LocalBoard[]>([])
   const [activeId, setActiveId] = useState('')
@@ -120,7 +126,14 @@ export default function CreativeWorkspace() {
           await db.boards.put(first)
           all = [first]
         }
-        await refresh()
+        const incoming = takeImage('create')
+        if (incoming) {
+          // Arrived from Frame → "Annotate in Create": a fresh board with the image on it.
+          const b = newBoard(translate('Screenshot', undefined, detectLang()))
+          await db.boards.add(b)
+          pendingImage.current = new File([incoming], 'screenshot.png', { type: 'image/png' })
+          await refresh(b.id)
+        } else await refresh()
       } catch {
         setNotice({ text: translate('Canvas storage is unavailable. You can draw, but export before leaving.', undefined, detectLang()), error: true })
       } finally {
@@ -232,6 +245,28 @@ export default function CreativeWorkspace() {
       a.click()
       URL.revokeObjectURL(a.href)
       setNotice({ text: message })
+    } catch {
+      setNotice({ text: t('The image could not be created.'), error: true })
+    }
+  }
+
+  const placeImage = async (file: File) => {
+    const editor = editorRef.current
+    if (!editor) return
+    await editor.putExternalContent({ type: 'files', files: [file], point: editor.getViewportPageBounds().center })
+    editor.zoomToSelection({ animation: { duration: 300 } })
+  }
+
+  const frameIt = async () => {
+    const editor = editorRef.current
+    if (!editor) return
+    const selected = editor.getSelectedShapeIds()
+    const ids = selected.length ? selected : [...editor.getCurrentPageShapeIds()]
+    if (!ids.length) return setNotice({ text: t('Draw something first, then capture it.') })
+    try {
+      const { blob } = await editor.toImage(ids, { format: 'png', background: true, padding: 16, scale: 2 })
+      sendImage('frame', blob)
+      router.push('/frame')
     } catch {
       setNotice({ text: t('The image could not be created.'), error: true })
     }
@@ -417,7 +452,18 @@ export default function CreativeWorkspace() {
                 items={[
                   { label: t('Copy image'), hint: t('paste anywhere'), icon: <Copy size={15} />, onSelect: () => capture('copy') },
                   { label: t('Save PNG'), icon: <ImageDown size={15} />, onSelect: () => capture('save') },
+                  'separator',
+                  { label: t('Frame it'), icon: <Aperture size={15} />, onSelect: () => void frameIt() },
                 ]}
+              />
+            )}
+            {active && (
+              <CaptureScreenButton
+                onImage={file => {
+                  void placeImage(file)
+                  setNotice({ text: t('Screenshot added to the board.') })
+                }}
+                onError={text => setNotice({ text, error: true })}
               />
             )}
             {active && (
@@ -447,7 +493,15 @@ export default function CreativeWorkspace() {
               snapshot={active.snapshot}
               theme={theme}
               locale={lang}
-              onEditor={e => (editorRef.current = e)}
+              onEditor={e => {
+                editorRef.current = e
+                const file = pendingImage.current
+                if (file) {
+                  pendingImage.current = null
+                  // Let the board finish loading its snapshot first.
+                  setTimeout(() => void placeImage(file), 50)
+                }
+              }}
               onChange={snapshot => {
                 if (!unreadableRef.current.includes(active.id)) autosave.queue(active.id, { snapshot })
               }}
